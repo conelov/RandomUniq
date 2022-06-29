@@ -24,7 +24,7 @@ public:
     {
       constexpr std::size_t                      repeatCount = 1'000'000;
       std::uniform_int_distribution<std::size_t> distribution(0, resolutionX);
-      for (auto const i : ranges::views::iota(0u, repeatCount - 1u)) {
+      for ([[maybe_unused]] auto const i : ranges::views::iota(0u, repeatCount - 1u)) {
         auto const key = (distribution(urand::util::RandomDevice<std::mt19937>::get()) +
                            distribution(urand::util::RandomDevice<std::mt19937>::get()) +
                            distribution(urand::util::RandomDevice<std::mt19937>::get())) / 3;
