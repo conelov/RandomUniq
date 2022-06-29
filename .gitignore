@@ -1,0 +1,9 @@
+cmake-build-*
+build-*
+*.user
+*.autosave
+*.exe
+*.~*
+bin
+lib
+.idea
