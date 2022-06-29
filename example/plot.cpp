@@ -7,7 +7,6 @@
 #include "ui_FormMain.h"
 #include <map>
 #include <QApplication>
-#include <QDebug>
 
 
 namespace {
@@ -17,18 +16,22 @@ class Plot final : public QWidget
 public:
   Plot() {
     setupUi(this);
+  }
 
+private slots:
+  void on_pb_gen_released() {
     constexpr std::size_t              resolutionX = 100;
     std::size_t                        resolutionY = 0;
     std::map<std::size_t, std::size_t> data;
     {
-      constexpr std::size_t                      repeatCount = 1'000'000;
+      const std::size_t                          repeatCount = cb_x_axis_scale->isChecked() ? 1'000'000 : 1;
       std::uniform_int_distribution<std::size_t> distribution(0, resolutionX);
       for ([[maybe_unused]] auto const i : ranges::views::iota(0u, repeatCount - 1u)) {
-        auto const key = (distribution(urand::util::RandomDevice<std::mt19937>::get()) +
-                           distribution(urand::util::RandomDevice<std::mt19937>::get()) +
-                           distribution(urand::util::RandomDevice<std::mt19937>::get())) / 3;
-        resolutionY    = std::max(resolutionY, ++data[key]);
+        auto const key = (distribution(urand::util::RandomDevice<std::mt19937>::get())
+                           + distribution(urand::util::RandomDevice<std::mt19937>::get())
+                           + distribution(urand::util::RandomDevice<std::mt19937>::get()))
+          / 3;
+        resolutionY = std::max(resolutionY, ++data[key]);
       }
     }
     auto const bars = new QCPBars(qcp_plot->xAxis, qcp_plot->yAxis);
