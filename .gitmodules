@@ -1,0 +1,6 @@
+[submodule "3rdparty/range"]
+	path = 3rdparty/range
+	url = https://github.com/ericniebler/range-v3.git
+[submodule "3rdparty/gsl"]
+	path = 3rdparty/gsl
+	url = https://github.com/microsoft/GSL.git

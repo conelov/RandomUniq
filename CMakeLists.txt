@@ -2,12 +2,20 @@ cmake_minimum_required(VERSION 3.16)
 project(RandomUniq CXX)
 set(CMAKE_CXX_STANDARD 20)
 
+add_subdirectory(3rdparty/gsl)
+
 add_library(${PROJECT_NAME}_impl STATIC
-  include/randomUniq/UniformIntDistributionUniq.hpp include/randomUniq/src/UniformIntDistributionUniq.cpp
   include/randomUniq/util/RandomDevice.hpp
-  include/randomUniq/UniformIntDistribution.hpp)
+
+  include/randomUniq/UniformIntDistributionUniq.hpp include/randomUniq/src/UniformIntDistributionUniq.cpp
+  include/randomUniq/UniformIntDistribution.hpp
+  )
+target_link_libraries(${PROJECT_NAME}_impl PUBLIC
+  Microsoft.GSL::GSL
+  )
 target_include_directories(${PROJECT_NAME}_impl PUBLIC
   include
+  3rdparty/range/include
   )
 set_target_properties(${PROJECT_NAME}_impl PROPERTIES
   LINKER_LANGUAGE CXX
