@@ -17,15 +17,16 @@ std::ostream& operator<<(std::ostream& os, std::array<T, S> const& array) {
   for (auto const i : array) {
     os << i << ' ';
   }
+  return os;
 }
 }// namespace
 
 
 TEST(general, smoke) {
   constexpr std::size_t      totalSize = 10'000;
-  std::array<int, totalSize> array_gen;
+  std::array<std::size_t, totalSize> array_gen;
   using namespace ranges;
-  generate(array_gen, [gen = urand::UniformIntDistributionUniq(0, totalSize - 1)]() mutable {
+  generate(array_gen, [gen = urand::UniformIntDistributionUniq<std::size_t>(0, totalSize - 1)]() mutable {
     return gen();
   });
   sort(array_gen);
@@ -33,5 +34,5 @@ TEST(general, smoke) {
   for (auto const i : array_gen) {
     std::cout << i << ' ';
   }
-  ASSERT_TRUE(equal(views::iota(0u, totalSize - 1), array_gen)) << array_gen;
+  ASSERT_TRUE(equal(views::iota(0u, totalSize), array_gen));
 }
