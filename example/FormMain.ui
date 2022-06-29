@@ -60,7 +60,17 @@
       </widget>
      </item>
      <item>
-      <widget class="QSpinBox" name="sp_repeatCount"/>
+      <widget class="QSpinBox" name="sp_repeatCount">
+       <property name="minimum">
+        <number>1</number>
+       </property>
+       <property name="maximum">
+        <number>1000000000</number>
+       </property>
+       <property name="singleStep">
+        <number>100</number>
+       </property>
+      </widget>
      </item>
      <item>
       <spacer name="horizontalSpacer_4">
@@ -106,10 +116,15 @@
       </widget>
      </item>
      <item>
-      <widget class="QComboBox" name="comboBox">
+      <widget class="QComboBox" name="cb_genMethod">
        <item>
         <property name="text">
-         <string>UniformIntDistributionUniq</string>
+         <string>UniformIntDistributionUniq LinearDoobleGen</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>UniformIntDistributionUniq NonLinearEqualChanceRange</string>
         </property>
        </item>
        <item>

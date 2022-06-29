@@ -18,6 +18,7 @@ enum class UniformIntDistributionUniqGenType : std::uint8_t {
 template<typename T_, UniformIntDistributionUniqGenType GenType_ = UniformIntDistributionUniqGenType::LinearDoobleGen>
 class UniformIntDistributionUniq final {
   static_assert(std::is_integral_v<T_>);
+
 public:
   using value_type              = T_;
   static constexpr auto GenType = GenType_;
@@ -112,5 +113,22 @@ private:
 private:
   std::vector<Range> ranges_;
   std::size_t        totalCounter_;
+
+private:
+  //  auto rangeRandom() const noexcept {
+  //    if constexpr (GenType == UniformIntDistributionUniqGenType::LinearDoobleGen) {
+  //      double       res    = 0;
+  //      const double random = std::uniform_real_distribution<double>(0, 1)(util::RandomDevice<std::mt19937>::get());
+  //      for (auto it = ranges_.begin(); it != ranges_.end(); ++it) {
+  //        res += it->chance(totalCounter_);
+  //        if (res >= random) {
+  //          return it;
+  //        }
+  //      }
+  //      return std::prev(ranges_.end());
+  //    } else {
+  //      return std::next(ranges_.begin(), std::uniform_int_distribution<int>(0, ranges_.size() - 1)(util::RandomDevice<std::mt19937>::get()));
+  //    }
+  //  }
 };
 }// namespace urand
