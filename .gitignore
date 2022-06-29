@@ -7,3 +7,4 @@ build-*
 bin
 lib
 .idea
+/3rdparty/qcustomplot
