@@ -52,17 +52,7 @@ UniformIntDistributionUniq::value_type UniformIntDistributionUniq::get() {
     throw std::runtime_error("no contained number");
   }
   const auto _       = gsl::finally([this] { --totalCounter_; });
-  const auto itRange = [this] {
-    double     res    = 0;
-    const auto random = std::uniform_real_distribution<double>(0, 1)(util::RandomDevice<std::mt19937>::get());
-    for (auto it = ranges_.begin(); it != ranges_.end(); ++it) {
-      res += it->chance(totalCounter_);
-      if (res >= random) {
-        return it;
-      }
-    }
-    return std::prev(ranges_.end());
-  }();
+  const auto itRange = std::next(ranges_.begin(), std::uniform_int_distribution<int>(0, ranges_.size() - 1)(util::RandomDevice<std::mt19937>::get()));
 
   if (itRange->min == itRange->max) {
     const auto result = itRange->min;

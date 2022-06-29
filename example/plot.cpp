@@ -2,12 +2,12 @@
 // Created by dym on 29.06.22.
 //
 
+#include "randomUniq/UniformIntDistributionUniq.hpp"
 #include "randomUniq/util/RandomDevice.hpp"
 #include "range/v3/view/iota.hpp"
 #include "ui_FormMain.h"
 #include <map>
 #include <QApplication>
-#include <QDebug>
 
 
 namespace {
@@ -22,13 +22,10 @@ public:
     std::size_t                        resolutionY = 0;
     std::map<std::size_t, std::size_t> data;
     {
-      constexpr std::size_t                      repeatCount = 1'000'000;
-      std::uniform_int_distribution<std::size_t> distribution(0, resolutionX);
-      for ([[maybe_unused]] auto const i : ranges::views::iota(0u, repeatCount - 1u)) {
-        auto const key = (distribution(urand::util::RandomDevice<std::mt19937>::get()) +
-                           distribution(urand::util::RandomDevice<std::mt19937>::get()) +
-                           distribution(urand::util::RandomDevice<std::mt19937>::get())) / 3;
-        resolutionY    = std::max(resolutionY, ++data[key]);
+      constexpr std::size_t             repeatCount = 100'000;
+      urand::UniformIntDistributionUniq distribution(0, repeatCount);
+      for ([[maybe_unused]] auto const i : ranges::views::iota(0u, (repeatCount - 1u) / 2)) {
+        resolutionY = std::max(resolutionY, ++data[distribution()]);
       }
     }
     auto const bars = new QCPBars(qcp_plot->xAxis, qcp_plot->yAxis);
