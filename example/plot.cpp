@@ -24,12 +24,10 @@ public:
         {"linear x3", &Plot::method_linear_x3},
       } {
     setupUi(this);
-    qcp_plot->xAxis->setRange(-0.01, 1.01);
-    qcp_plot->yAxis->setRange(0, 1.01);
   }
 
 private:
-  const std::map<QString, void (Plot::*)()> stringToMethod_;
+  const std::map<QString, QMap<> (Plot::*)()> stringToMethod_;
 
 private:
   template<urand::UniformIntDistributionUniqGenType GenType>
@@ -70,17 +68,13 @@ private:
       const std::size_t                          repeatCount = sp_repeatCount->value();
       std::uniform_int_distribution<std::size_t> distribution(0, resolutionX);
       for ([[maybe_unused]] auto const i : ranges::views::iota(0u, repeatCount - 1u)) {
-        auto const key = ranges::accumulate(ranges::views::iota(0u, count), 0, [&](auto const lhs, auto const rhs) {
+        auto const key = ranges::accumulate(ranges::views::iota(0u, count - 1), 0, [&](auto const lhs, auto const rhs) {
           return lhs + distribution(urand::util::RandomDevice<std::mt19937>::get());
         }) / count;
         resolutionY    = std::max(resolutionY, ++data[key]);
       }
     }
-    auto const bars = new QCPBars(qcp_plot->xAxis, qcp_plot->yAxis);
-    bars->setWidth((1. / resolutionX) * 0.9);
-    for (auto const [key, value] : data) {
-      bars->addData(static_cast<double>(key) / resolutionX, static_cast<double>(value) / resolutionY);
-    }
+    plotShow(data);
   }
 
 
@@ -97,7 +91,7 @@ private slots:
   void on_pb_gen_released() {
     qcp_plot->clearPlottables();
     std::invoke(stringToMethod_.at(cb_genMethod->currentText()), this);
-    qcp_plot->replot();
+    qcp_plot->replot()
   }
 };
 }// namespace
