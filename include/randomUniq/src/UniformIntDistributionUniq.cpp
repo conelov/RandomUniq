@@ -51,12 +51,21 @@ UniformIntDistributionUniq::value_type UniformIntDistributionUniq::get() {
   if (!totalCounter_) {
     throw std::runtime_error("no contained number");
   }
-  auto const _       = gsl::finally([this] { --totalCounter_; });
-  auto const itRange = std::next(ranges_.begin(),
-    std::uniform_int_distribution<std::size_t>(0, ranges_.size())(util::RandomDevice<std::mt19937>::get()));
+  const auto _       = gsl::finally([this] { --totalCounter_; });
+  const auto itRange = [this] {
+    double     res    = 0;
+    const auto random = std::uniform_real_distribution<double>(0, 1)(util::RandomDevice<std::mt19937>::get());
+    for (auto it = ranges_.begin(); it != ranges_.end(); ++it) {
+      res += it->chance(totalCounter_);
+      if (res >= random) {
+        return it;
+      }
+    }
+    return std::prev(ranges_.end());
+  }();
 
   if (itRange->min == itRange->max) {
-    auto const result = itRange->min;
+    const auto result = itRange->min;
     ranges_.erase(itRange);
     return result;
   }
@@ -93,4 +102,12 @@ UniformIntDistributionUniq::operator bool() const noexcept {
   return this->empty();
 }
 
+std::size_t UniformIntDistributionUniq::Range::size() const noexcept {
+  return max - min + 1;
+}
+
+
+double UniformIntDistributionUniq::Range::chance(std::size_t total) const noexcept {
+  return 1. / total * size();
+}
 }// namespace urand

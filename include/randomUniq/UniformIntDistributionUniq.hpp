@@ -28,6 +28,8 @@ private:
     value_type min;
     value_type max;
 
+    std::size_t size() const noexcept;
+    double chance(std::size_t total) const noexcept;
     //    std::size_t count_number;
     //    float      chance;
   };
