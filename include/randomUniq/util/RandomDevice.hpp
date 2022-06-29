@@ -27,7 +27,8 @@ private:
   RandomDevice() {
     std::random_device rd;
     if (rd.entropy()) {
-      mt_.seed(std::seed_seq{rd(), rd(), rd(), rd(), rd(), rd(), rd(), rd()});
+      std::seed_seq seedSeq{rd(), rd(), rd(), rd(), rd(), rd(), rd(), rd()};
+      mt_.seed(seedSeq);
     } else {
       mt_.seed(std::chrono::high_resolution_clock::now().time_since_epoch().count());
     }
@@ -42,6 +43,4 @@ private:
 private:
   TGen mt_;
 };
-
-using RandomDeviceMt19937 = RandomDevice<std::mt19937>;
 }// namespace urand::util

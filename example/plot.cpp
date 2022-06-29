@@ -2,10 +2,27 @@
 // Created by dym on 29.06.22.
 //
 
-#include <iostream>
+#include "ui_FormMain.h"
+#include <QApplication>
 
 
-int main() {
+namespace {
+class Plot final : public QWidget
+    , public Ui::FormMain {
+  Q_OBJECT
+public:
+  Plot() {
+    setupUi(this);
+  }
+};
+}// namespace
 
-  return 0;
+int main(int argc, char* argv[]) {
+  QApplication app(argc, argv);
+  Plot plot;
+  plot.show();
+
+  return QApplication::exec();
 }
+
+#include "plot.moc"

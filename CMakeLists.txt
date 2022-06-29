@@ -3,9 +3,9 @@ project(RandomUniq CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 add_library(${PROJECT_NAME}_impl STATIC
-  include/randomUniq/UniformIntDistributionUniq.hpp
+  include/randomUniq/UniformIntDistributionUniq.hpp include/randomUniq/src/UniformIntDistributionUniq.cpp
   include/randomUniq/util/RandomDevice.hpp
-  )
+  include/randomUniq/UniformIntDistribution.hpp)
 target_include_directories(${PROJECT_NAME}_impl PUBLIC
   include
   )
@@ -21,7 +21,7 @@ target_link_libraries(${PROJECT_NAME}_touch PUBLIC
   )
 
 set(QT_VERSION_MAJOR 5)
-set(${PROJECT_NAME}_plot_REQUIRED_LIBS Core Widgets)
+set(${PROJECT_NAME}_plot_REQUIRED_LIBS Core Widgets PrintSupport)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ${${PROJECT_NAME}_plot_REQUIRED_LIBS})
 if (Qt${QT_VERSION_MAJOR}_FOUND)
   message(STATUS "Qt${QT_VERSION_MAJOR} Found")
@@ -46,13 +46,15 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
   target_link_libraries(qcustomplot PUBLIC
     ${${PROJECT_NAME}_plot_REQUIRED_LIBS_QUALIFIED}
     )
-  set_target_properties(qcustomplot PROPERTIES
-    AUTOMOC ON
-    INCLUDE_CURRENT_DIR ON
-    INTERPROCEDURAL_OPTIMIZATION ON
+  target_include_directories(qcustomplot PUBLIC
+    3rdparty/qcustomplot
     )
   target_compile_definitions(qcustomplot PUBLIC
     QT_USE_QSTRINGBUILDER
+    )
+  set_target_properties(qcustomplot PROPERTIES
+    AUTOMOC ON
+    INCLUDE_CURRENT_DIR ON
     )
 
   add_executable(${PROJECT_NAME}_plot
@@ -67,7 +69,8 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     )
   set_target_properties(${PROJECT_NAME}_plot PROPERTIES
     AUTOMOC ON
+    AUTOUIC ON
+    AUTOUIC_SEARCH_PATHS example
     INCLUDE_CURRENT_DIR ON
-    INTERPROCEDURAL_OPTIMIZATION ON
     )
 endif ()

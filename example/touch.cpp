@@ -1,8 +1,11 @@
-#include "randomUniq/UniformIntDistributionUniq.hpp"
+#include "randomUniq/UniformIntDistribution.hpp"
 #include <iostream>
 
 
 int main() {
-  std::cout << "Hello, World!" << std::endl;
+  urand::UniformIntDistribution<short> rgInt;
+  for (std::size_t i{}; i < 100000; ++i) {
+    std::cout << rgInt() << '\n';
+  }
   return 0;
 }
