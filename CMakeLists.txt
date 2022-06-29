@@ -1,12 +1,16 @@
 cmake_minimum_required(VERSION 3.16)
-project(RandomUniq)
+project(RandomUniq CXX)
 set(CMAKE_CXX_STANDARD 20)
 
-add_library(${PROJECT_NAME}_impl INTERFACE
+add_library(${PROJECT_NAME}_impl STATIC
   include/randomUniq/UniformIntDistributionUniq.hpp
+  include/randomUniq/util/RandomDevice.hpp
   )
-target_include_directories(${PROJECT_NAME}_impl INTERFACE
+target_include_directories(${PROJECT_NAME}_impl PUBLIC
   include
+  )
+set_target_properties(${PROJECT_NAME}_impl PROPERTIES
+  LINKER_LANGUAGE CXX
   )
 
 add_executable(${PROJECT_NAME}_touch
