@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 project(RandomUniq CXX)
 set(CMAKE_CXX_STANDARD 20)
 
+set(ENABLE_TESTING CACHE ON BOOL "")
+
 add_subdirectory(3rdparty/gsl)
 
 add_library(${PROJECT_NAME}_impl STATIC
@@ -27,6 +29,18 @@ add_executable(${PROJECT_NAME}_touch
 target_link_libraries(${PROJECT_NAME}_touch PUBLIC
   ${PROJECT_NAME}_impl
   )
+
+if (ENABLE_TESTING)
+  add_executable(${PROJECT_NAME}_test
+    test/general.cpp
+    )
+  target_link_libraries(${PROJECT_NAME}_test PUBLIC
+    ${PROJECT_NAME}_impl
+    )
+  target_include_directories(${PROJECT_NAME}_test PUBLIC
+    ${GTEST_ROOT}/googletest/include
+    )
+endif ()
 
 set(QT_VERSION_MAJOR 5)
 set(${PROJECT_NAME}_plot_REQUIRED_LIBS Core Widgets PrintSupport)
