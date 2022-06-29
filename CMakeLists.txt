@@ -9,7 +9,7 @@ add_subdirectory(3rdparty/gsl)
 add_library(${PROJECT_NAME}_impl STATIC
   include/randomUniq/util/RandomDevice.hpp
 
-  include/randomUniq/UniformIntDistributionUniq.hpp include/randomUniq/src/UniformIntDistributionUniq.cpp
+  include/randomUniq/UniformIntDistributionUniq.hpp
   include/randomUniq/UniformIntDistribution.hpp
   )
 target_link_libraries(${PROJECT_NAME}_impl PUBLIC
