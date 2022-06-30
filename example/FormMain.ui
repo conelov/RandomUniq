@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>640</width>
-    <height>480</height>
+    <width>805</width>
+    <height>766</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,101 +19,198 @@
      <widget class="QCustomPlot" name="qcp_plot" native="true"/>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1,0">
-      <item>
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Gen method</string>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0" colspan="2">
+       <layout class="QFormLayout" name="formLayout_3">
+        <property name="rowWrapPolicy">
+         <enum>QFormLayout::WrapLongRows</enum>
         </property>
-       </widget>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Gen method</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="cb_genMethod">
+          <item>
+           <property name="text">
+            <string>UniformIntDistributionUniq LinearDoobleGen</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>UniformIntDistributionUniq NonLinearEqualChanceRange</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>linear</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>linear x3</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
       </item>
-      <item>
-       <widget class="QComboBox" name="cb_genMethod">
-        <item>
-         <property name="text">
-          <string>UniformIntDistributionUniq LinearDoobleGen</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>UniformIntDistributionUniq NonLinearEqualChanceRange</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>linear</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>linear x3</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="cb_x_axis_scale">
-        <property name="text">
-         <string>0..1</string>
+      <item row="1" column="0">
+       <layout class="QFormLayout" name="formLayout_4">
+        <property name="rowWrapPolicy">
+         <enum>QFormLayout::WrapLongRows</enum>
         </property>
-        <property name="checked">
-         <bool>false</bool>
+        <item row="0" column="0">
+         <widget class="QLabel" name="l_repeatCount">
+          <property name="text">
+           <string>RepeatCount</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSpinBox" name="sp_repeatCount">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>1000000000</number>
+          </property>
+          <property name="singleStep">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>10000</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="1" column="1">
+       <widget class="QPushButton" name="pb_gen">
+        <property name="text">
+         <string>Gen</string>
         </property>
        </widget>
       </item>
      </layout>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,1,0,1,0">
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
       <item>
-       <widget class="QLabel" name="l_repeatCount">
-        <property name="text">
-         <string>RepeatCount</string>
+       <layout class="QFormLayout" name="formLayout">
+        <property name="rowWrapPolicy">
+         <enum>QFormLayout::WrapLongRows</enum>
         </property>
-       </widget>
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="cb_customXScale">
+          <property name="text">
+           <string>Custom X scale</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QFrame" name="f_customXScale">
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Raised</enum>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <item>
+            <widget class="QDoubleSpinBox" name="sp_customXScale_min"/>
+           </item>
+           <item>
+            <widget class="QLabel" name="l_customXScale">
+             <property name="text">
+              <string>&lt;= X &lt;=</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="sp_customXScale_max"/>
+           </item>
+           <item>
+            <widget class="QLabel" name="l_barsCount">
+             <property name="text">
+              <string>Bars count</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="sp_barsCount">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>1000000</number>
+             </property>
+             <property name="value">
+              <number>100</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
       </item>
       <item>
-       <widget class="QSpinBox" name="sp_repeatCount">
-        <property name="minimum">
-         <number>1</number>
+       <layout class="QFormLayout" name="formLayout_2">
+        <property name="rowWrapPolicy">
+         <enum>QFormLayout::WrapLongRows</enum>
         </property>
-        <property name="maximum">
-         <number>1000000000</number>
-        </property>
-        <property name="singleStep">
-         <number>100</number>
-        </property>
-        <property name="value">
-         <number>10000</number>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Bars count</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QSpinBox" name="sp_barsCount">
-        <property name="minimum">
-         <number>1</number>
-        </property>
-        <property name="maximum">
-         <number>1000000</number>
-        </property>
-        <property name="value">
-         <number>100</number>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pb_gen">
-        <property name="text">
-         <string>Gen</string>
-        </property>
-       </widget>
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="cb_customYScale">
+          <property name="text">
+           <string>Custom Y scale</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QFrame" name="f_customYScale">
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Raised</enum>
+          </property>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <item>
+            <widget class="QDoubleSpinBox" name="sp_customYScale_min"/>
+           </item>
+           <item>
+            <widget class="QLabel" name="l_customYScale">
+             <property name="text">
+              <string>&lt;= Y &lt;=</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="sp_customYScale_max"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </item>

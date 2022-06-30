@@ -5,15 +5,25 @@
 #include "randomUniq/UniformIntDistributionUniq.hpp"
 #include "randomUniq/util/RandomDevice.hpp"
 #include "range/v3/numeric/accumulate.hpp"
+#include "range/v3/view/group_by.hpp"
 #include "range/v3/view/iota.hpp"
+#include "range/v3/view/linear_distribute.hpp"
+#include "range/v3/view/zip.hpp"
 #include "ui_FormMain.h"
 #include <map>
 #include <QApplication>
 
 
 namespace {
+
+void setVisibleWidget(bool visible, QWidget* w1, auto*... ws) {
+  w1->setVisible(visible);
+  (ws->setVisible(visible), ...);
+}
+
+
 class Plot final : public QMainWindow
-    , public Ui::FormMain {
+    , private Ui::FormMain {
   Q_OBJECT
 public:
   Plot()
@@ -24,16 +34,27 @@ public:
         {"linear x3", &Plot::method_linear_x3},
       } {
     setupUi(this);
+
+    cb_genMethod->clear();
+    for (auto const& [key, value] : stringToMethod_) {
+      cb_genMethod->addItem(key);
+    }
+
+    on_cb_customXScale_toggled(cb_customXScale->isChecked());
+    on_cb_customYScale_toggled(cb_customYScale->isChecked());
   }
 
 private:
-  const std::map<QString, QVector<std::size_t> (Plot::*)()> stringToMethod_;
+  using Data_ = std::map<std::size_t, std::size_t>;
+
+private:
+  const std::map<QString, Data_ (Plot::*)()> stringToMethod_;
 
 private:
   template<urand::UniformIntDistributionUniqGenType GenType>
-  QVector<std::size_t> uniformIntDistributionUniqAtType() {
+  Data_ uniformIntDistributionUniqAtType() {
     const std::size_t                                       repeatCount = sp_repeatCount->value();
-    QVector<std::size_t>                                    data(repeatCount);
+    Data_                                                   data;
     urand::UniformIntDistributionUniq<std::size_t, GenType> distribution(0, repeatCount - 1u);
     for ([[maybe_unused]] auto const i : ranges::views::iota(0u, repeatCount - 1u)) {
       ++data[distribution()];
@@ -42,19 +63,19 @@ private:
   }
 
 
-  QVector<std::size_t> method_UniformIntDistributionUniq_LinearDoobleGen() {
+  Data_ method_UniformIntDistributionUniq_LinearDoobleGen() {
     return uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>();
   }
 
 
-  QVector<std::size_t> method_UniformIntDistributionUniq_NonLinearEqualChanceRange() {
+  Data_ method_UniformIntDistributionUniq_NonLinearEqualChanceRange() {
     return uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>();
   }
 
 
-  QVector<std::size_t> linear_impl(std::size_t count) {
+  Data_ linear_impl(std::size_t count) {
     const std::size_t                          repeatCount = sp_repeatCount->value();
-    QVector<std::size_t>                       data(repeatCount);
+    Data_                                      data;
     std::uniform_int_distribution<std::size_t> distribution(0, repeatCount - 1u);
     for ([[maybe_unused]] auto const i : ranges::views::iota(0u, repeatCount - 1u)) {
       auto const key = ranges::accumulate(ranges::views::iota(0u, count), 0, [&](auto const lhs, auto const rhs) {
@@ -66,53 +87,41 @@ private:
   }
 
 
-  QVector<std::size_t> method_linear() {
+  Data_ method_linear() {
     return linear_impl(1);
   }
 
 
-  QVector<std::size_t> method_linear_x3() {
+  Data_ method_linear_x3() {
     return linear_impl(3);
   }
 
-private slots:
-  void on_pb_gen_released() {
-    qcp_plot->clearPlottables();
-    if (cb_x_axis_scale->isChecked()) {
-      std::map<double, std::size_t> keyValueData;
-      const auto                    values = std::invoke(stringToMethod_.at(cb_genMethod->currentText()), this);
-      const std::size_t             xMax = *std::max(values.cbegin(), values.cend());
 
-      for (std::size_t i = 0; i < sp_barsCount->value(); ++i) {
-
-        auto const key =
-        keyValueData[1. / sp_barsCount->value() * xMax] += values[i];
-      }
+  void replot() {
+    qcp_plot->clearGraphs();
+    Data_      keyValueData = std::invoke(stringToMethod_.at(cb_genMethod->currentText()), this);
+    auto const graph = qcp_plot->addGraph();
+    for (auto const [key, value] : keyValueData) {
+      graph->addData(key, value);
     }
-    double xMax = 0, yMax = 0;
-    {
-      auto const bar  = new QCPBars(qcp_plot->xAxis, qcp_plot->yAxis);
-      const auto data = std::invoke(stringToMethod_.at(cb_genMethod->currentText()), this);
-      for (std::size_t i{}; i < data.size(); ++i) {
-        auto const key   = cb_x_axis_scale->isChecked() ? (1. / static_cast<double>(i) * sp_barsCount->value()) : i;
-        auto const value = data[i];
-        xMax             = std::max(xMax, key);
-        yMax             = std::max(yMax, value);
-        bar->addData(key, value);
-      }
-    }
-    if (cb_x_axis_scale->isChecked()) {
-      qcp_plot->xAxis->setRange(-0.01, 1.01);
-      qcp_plot->yAxis->setRange(0, 1.01);
-    } else {
-      qcp_plot->xAxis->setRange(-0.01, xMax + xMax * 0.01);
-      qcp_plot->yAxis->setRange(0, yMax + yMax * 0.01);
-    }
-
+    qcp_plot->xAxis->setRange(keyValueData.begin()->first, std::prev(keyValueData.end())->first);
+    qcp_plot->yAxis->setRange(keyValueData.begin()->second, std::prev(keyValueData.end())->second);
     qcp_plot->replot();
   }
 
-  void on_cb_x_axis_scale_stateChanged(int state) {
+
+private slots:
+  void on_cb_customXScale_toggled(bool checked) {
+    setVisibleWidget(checked, f_customXScale);
+  }
+
+
+  void on_cb_customYScale_toggled(bool checked) {
+    setVisibleWidget(checked, f_customYScale);
+  }
+
+  void on_pb_gen_released() {
+    replot();
   }
 };
 }// namespace
