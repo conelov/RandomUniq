@@ -4,14 +4,12 @@
 
 #include "randomUniq/UniformIntDistributionUniq.hpp"
 #include "randomUniq/util/RandomDevice.hpp"
-#include "range/v3/numeric/accumulate.hpp"
-#include "range/v3/view/group_by.hpp"
-#include "range/v3/view/iota.hpp"
-#include "range/v3/view/linear_distribute.hpp"
-#include "range/v3/view/zip.hpp"
 #include "ui_FormMain.h"
+#include "util/rangeIntegrate.hpp"
 #include <map>
 #include <QApplication>
+#include <range/v3/numeric/accumulate.hpp>
+#include <range/v3/view/iota.hpp>
 
 
 namespace {
@@ -36,7 +34,7 @@ public:
     setupUi(this);
 
     cb_genMethod->clear();
-    for (auto const& [key, value] : stringToMethod_) {
+    for (const auto& [key, value] : stringToMethod_) {
       cb_genMethod->addItem(key);
     }
 
@@ -49,6 +47,7 @@ private:
 
 private:
   const std::map<QString, Data_ (Plot::*)()> stringToMethod_;
+  Data_                                      data_;
 
 private:
   template<urand::UniformIntDistributionUniqGenType GenType>
@@ -56,7 +55,7 @@ private:
     const std::size_t                                       repeatCount = sp_repeatCount->value();
     Data_                                                   data;
     urand::UniformIntDistributionUniq<std::size_t, GenType> distribution(0, repeatCount - 1u);
-    for ([[maybe_unused]] auto const i : ranges::views::iota(0u, repeatCount - 1u)) {
+    for ([[maybe_unused]] const auto i : ranges::views::iota(0u, repeatCount - 1u)) {
       ++data[distribution()];
     }
     return data;
@@ -77,8 +76,8 @@ private:
     const std::size_t                          repeatCount = sp_repeatCount->value();
     Data_                                      data;
     std::uniform_int_distribution<std::size_t> distribution(0, repeatCount - 1u);
-    for ([[maybe_unused]] auto const i : ranges::views::iota(0u, repeatCount - 1u)) {
-      auto const key = ranges::accumulate(ranges::views::iota(0u, count), 0, [&](auto const lhs, auto const rhs) {
+    for ([[maybe_unused]] const auto i : ranges::views::iota(0u, repeatCount - 1u)) {
+      const auto key = ranges::accumulate(ranges::views::iota(0u, count), 0, [&](const auto lhs, const auto rhs) {
         return lhs + distribution(urand::util::RandomDevice<std::mt19937>::get());
       }) / count;
       ++data[key];
@@ -97,16 +96,23 @@ private:
   }
 
 
+  void rangeIntegrate(double const toMin, double const toMax, std::size_t const toCount, auto&& f) const {
+  }
+
+
   void replot() {
     qcp_plot->clearGraphs();
-    Data_      keyValueData = std::invoke(stringToMethod_.at(cb_genMethod->currentText()), this);
-    auto const graph = qcp_plot->addGraph();
-    for (auto const [key, value] : keyValueData) {
+    const auto graph = qcp_plot->addGraph();
+
+    data_ = std::invoke(stringToMethod_.at(cb_genMethod->currentText()), this);
+    for (const auto [key, value] : data_) {
       graph->addData(key, value);
     }
-    qcp_plot->xAxis->setRange(keyValueData.begin()->first, std::prev(keyValueData.end())->first);
-    qcp_plot->yAxis->setRange(keyValueData.begin()->second, std::prev(keyValueData.end())->second);
+    qcp_plot->xAxis->setRange(data_.begin()->first, std::prev(data_.end())->first);
+    qcp_plot->yAxis->setRange(data_.begin()->second, std::prev(data_.end())->second);
     qcp_plot->replot();
+
+    rangeIntegrate(sp_customXScale_min->value(), sp_customXScale_max->value(), sp_barsCount->value(), [] {});
   }
 
 

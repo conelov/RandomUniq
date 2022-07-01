@@ -140,7 +140,17 @@
             </widget>
            </item>
            <item>
-            <widget class="QDoubleSpinBox" name="sp_customXScale_max"/>
+            <widget class="QDoubleSpinBox" name="sp_customXScale_max">
+             <property name="minimum">
+              <double>-9999.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>9999.000000000000000</double>
+             </property>
+             <property name="value">
+              <double>1.000000000000000</double>
+             </property>
+            </widget>
            </item>
            <item>
             <widget class="QLabel" name="l_barsCount">
@@ -192,7 +202,14 @@
           </property>
           <layout class="QHBoxLayout" name="horizontalLayout_2">
            <item>
-            <widget class="QDoubleSpinBox" name="sp_customYScale_min"/>
+            <widget class="QDoubleSpinBox" name="sp_customYScale_min">
+             <property name="minimum">
+              <double>-9999.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>9999.000000000000000</double>
+             </property>
+            </widget>
            </item>
            <item>
             <widget class="QLabel" name="l_customYScale">
@@ -205,7 +222,11 @@
             </widget>
            </item>
            <item>
-            <widget class="QDoubleSpinBox" name="sp_customYScale_max"/>
+            <widget class="QDoubleSpinBox" name="sp_customYScale_max">
+             <property name="value">
+              <double>1.000000000000000</double>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>

@@ -5,6 +5,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(ENABLE_TESTING CACHE ON BOOL "")
 
 add_subdirectory(3rdparty/gsl)
+add_subdirectory(3rdparty/range)
+if (ENABLE_TESTING)
+  add_subdirectory(3rdparty/gtest)
+endif ()
+find_package(Boost REQUIRED)
 
 add_library(${PROJECT_NAME}_impl STATIC
   include/randomUniq/util/RandomDevice.hpp
@@ -14,30 +19,26 @@ add_library(${PROJECT_NAME}_impl STATIC
   )
 target_link_libraries(${PROJECT_NAME}_impl PUBLIC
   Microsoft.GSL::GSL
+  Boost::boost
+  range-v3::range-v3
   )
 target_include_directories(${PROJECT_NAME}_impl PUBLIC
   include
-  3rdparty/range/include
   )
 set_target_properties(${PROJECT_NAME}_impl PROPERTIES
   LINKER_LANGUAGE CXX
   )
-
-add_executable(${PROJECT_NAME}_touch
-  example/touch.cpp
-  )
-target_link_libraries(${PROJECT_NAME}_touch PUBLIC
-  ${PROJECT_NAME}_impl
+target_compile_definitions(${PROJECT_NAME}_impl PUBLIC
+  PROJECT_NAME_RandomUniq=${PROJECT_NAME}
   )
 
 if (ENABLE_TESTING)
-  add_executable(${PROJECT_NAME}_test
-    test/general.cpp
+  add_executable(${PROJECT_NAME}_impl_ut
+    ut/smoke.cpp
     )
-  add_subdirectory(3rdparty/gtest)
-  target_link_libraries(${PROJECT_NAME}_test PUBLIC
-    ${PROJECT_NAME}_impl
+  target_link_libraries(${PROJECT_NAME}_impl_ut PRIVATE
     GTest::gtest_main
+    ${PROJECT_NAME}_impl
     )
 endif ()
 
@@ -73,20 +74,31 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
   target_compile_definitions(qcustomplot PUBLIC
     QT_USE_QSTRINGBUILDER
     )
+  target_compile_options(qcustomplot PRIVATE
+    -Wno-deprecated-declarations
+    )
   set_target_properties(qcustomplot PROPERTIES
     AUTOMOC ON
-    INCLUDE_CURRENT_DIR ON
+    )
+
+  add_library(${PROJECT_NAME}_plot_impl STATIC
+    example/util/rangeIntegrate.hpp
+    example/util/minmaxException.hpp
+    example/util/RangeScaler.hpp example/util/src/RangeScaler.cpp
+    )
+  target_link_libraries(${PROJECT_NAME}_plot_impl PUBLIC
+    qcustomplot
+    ${PROJECT_NAME}_impl
+    )
+  target_include_directories(${PROJECT_NAME}_plot_impl PUBLIC
+    ${PROJECT_SOURCE_DIR}
     )
 
   add_executable(${PROJECT_NAME}_plot
     example/plot.cpp
     )
-  target_link_libraries(${PROJECT_NAME}_plot PUBLIC
-    ${PROJECT_NAME}_impl
-    qcustomplot
-    )
-  target_include_directories(${PROJECT_NAME}_plot PUBLIC
-    3rdparty
+  target_link_libraries(${PROJECT_NAME}_plot PRIVATE
+    ${PROJECT_NAME}_plot_impl
     )
   set_target_properties(${PROJECT_NAME}_plot PROPERTIES
     AUTOMOC ON
@@ -94,4 +106,14 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     AUTOUIC_SEARCH_PATHS example
     INCLUDE_CURRENT_DIR ON
     )
+
+  if (ENABLE_TESTING)
+    add_executable(${PROJECT_NAME}_plot_impl_ut
+      example/ut/rangeIntegrate.cpp
+      )
+    target_link_libraries(${PROJECT_NAME}_plot_impl_ut PUBLIC
+      GTest::gtest_main
+      ${PROJECT_NAME}_plot_impl
+      )
+  endif ()
 endif ()

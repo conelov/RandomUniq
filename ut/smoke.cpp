@@ -22,7 +22,7 @@ std::ostream& operator<<(std::ostream& os, std::array<T, S> const& array) {
 }// namespace
 
 
-TEST(general, smoke) {
+TEST(PROJECT_NAME_RandomUniq, smoke) {
   constexpr std::size_t      totalSize = 10'000;
   std::array<std::size_t, totalSize> array_gen;
   using namespace ranges;
