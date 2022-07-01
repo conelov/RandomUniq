@@ -20,8 +20,7 @@ auto rangeScaleView(auto fromMin, auto fromMax, std::size_t count, auto toMin, a
 
   return ranges::views::transform(
            [count, scaler = RangeScaler(fromMin, fromMax, toMin, toMax * count)](auto pair) {
-             return std::pair<double, typename std::remove_cvref_t<decltype(pair.second)>>{
-               scaler(pair.first) / static_cast<double>(count), pair.second};
+             return std::make_pair(scaler(pair.first) / static_cast<double>(count), pair.second);
            })
     | ranges::views::chunk_by([](auto lhs, auto rhs) {
         return lhs.first == rhs.first;
