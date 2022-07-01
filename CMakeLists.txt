@@ -82,7 +82,7 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     )
 
   add_library(${PROJECT_NAME}_plot_impl STATIC
-    example/util/rangeIntegrate.hpp
+    example/util/rangeScaleView.hpp
     example/util/minmaxException.hpp
     example/util/RangeScaler.hpp example/util/src/RangeScaler.cpp
     )
