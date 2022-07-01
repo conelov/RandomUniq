@@ -6,6 +6,8 @@
 
 #include "example/util/minmaxException.hpp"
 #include "example/util/RangeScaler.hpp"
+#include <range/v3/numeric/accumulate.hpp>
+#include <range/v3/range/operations.hpp>
 #include <range/v3/view/chunk_by.hpp>
 #include <range/v3/view/common.hpp>
 #include <range/v3/view/drop.hpp>
@@ -20,30 +22,25 @@
 namespace urand::plot::util {
 
 void rangeIntegrate(auto const& source, double toMin, double toMax, std::size_t toCount, auto&& f) {
-  auto rangeStepAtCount = [](auto f, auto l, std::size_t count) {
-    minmaxException(f, l);
-    return (l - f + 1.) / count;
-  };
+  minmaxException(toMin, toMax);
 
-  using Pair = decltype(*source.begin());
-
-  auto toRange = ranges::views::linear_distribute(toMin + rangeStepAtCount(toMin, toMax, toCount), toMax, toCount)
-    | ranges::views::drop(1)
-    | ranges::views::common;
-  auto const fromRange = source
-    | ranges::views::transform(
-      [scaler = RangeScaler(source.begin()->first, std::prev(source.end())->first, toMin, toMax)](Pair pair) {
-        return Pair{scaler(pair.first), pair.second};
-      })
-    | ranges::views::chunk_by([](Pair const lhs, Pair const rhs) {
-        return lhs.first == rhs.second;
-      });
-  //    auto itTo = toRange.begin();
-  //    auto itFrom = fromRange.begin();
-  //    while(itFrom != fromRange.end() && itTo != toRange.end()) {
-  //      std::find(itFrom, fromRange.end(), [](auto const pair) {
-  //        return true;
-  //      });
-  //    }
+  const std::size_t count = source.size();
+  using Pair = std::pair<double, typename std::remove_cvref_t<decltype(source.begin()->second)>>;
+  for (auto const [key, value] : source
+      | ranges::views::transform(
+        [count, scaler = RangeScaler(source.begin()->first, std::prev(source.end())->first, toMin, toMax * count)](Pair pair) {
+          return Pair{scaler(pair.first) / static_cast<double>(count), pair.second};
+        })
+      | ranges::views::chunk_by([](Pair lhs, Pair rhs) {
+          return lhs.first == rhs.first;
+        })
+      | ranges::views::transform([](auto&&range) {
+          return Pair{
+            ranges::front(range).first, ranges::accumulate(std::forward<decltype(range)>(range), 0, [](auto lhs, Pair pair) {
+              return lhs + pair.second;
+            })};
+        })) {
+    std::invoke(std::forward<decltype(f)>(f), key, value);
+  }
 }
 }// namespace urand::plot::util

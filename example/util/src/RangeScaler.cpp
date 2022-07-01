@@ -11,7 +11,7 @@ namespace urand::plot::util {
 RangeScaler::RangeScaler(double minOld, double maxOld, double minNew, double maxNew)
     : minOld_(minOld)
     , maxOld_(maxOld)
-    , newDif_(maxNew - maxNew) {
+    , newDif_(maxNew - minNew) {
   urand::plot::util::minmaxException(minOld, maxOld);
   urand::plot::util::minmaxException(minNew, maxNew);
 }
