@@ -9,7 +9,6 @@ add_subdirectory(3rdparty/range)
 if (ENABLE_TESTING)
   add_subdirectory(3rdparty/gtest)
 endif ()
-find_package(Boost REQUIRED)
 
 add_library(${PROJECT_NAME}_impl STATIC
   include/randomUniq/util/RandomDevice.hpp
@@ -19,7 +18,6 @@ add_library(${PROJECT_NAME}_impl STATIC
   )
 target_link_libraries(${PROJECT_NAME}_impl PUBLIC
   Microsoft.GSL::GSL
-  Boost::boost
   range-v3::range-v3
   )
 target_include_directories(${PROJECT_NAME}_impl PUBLIC
@@ -46,20 +44,33 @@ set(QT_VERSION_MAJOR 5)
 set(${PROJECT_NAME}_plot_REQUIRED_LIBS Core Widgets PrintSupport)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ${${PROJECT_NAME}_plot_REQUIRED_LIBS})
 if (Qt${QT_VERSION_MAJOR}_FOUND)
-  message(STATUS "Qt${QT_VERSION_MAJOR} Found")
+
+  add_library(${PROJECT_NAME}_plot_impl STATIC
+    example/util/minmaxException.hpp
+    example/util/rangeScaleView.hpp
+    example/util/rangeIntegrate.hpp
+    example/util/RangeScaler.hpp example/util/src/RangeScaler.cpp
+    )
+  target_link_libraries(${PROJECT_NAME}_plot_impl PUBLIC
+    range-v3::range-v3
+    )
+  target_include_directories(${PROJECT_NAME}_plot_impl PUBLIC
+    ${PROJECT_SOURCE_DIR}
+    )
 
   set(${PROJECT_NAME}_plot_REQUIRED_LIBS_QUALIFIED)
   foreach (lib ${${PROJECT_NAME}_plot_REQUIRED_LIBS})
     list(APPEND ${PROJECT_NAME}_plot_REQUIRED_LIBS_QUALIFIED Qt${QT_VERSION_MAJOR}::${lib})
   endforeach ()
 
+  find_package(Boost REQUIRED)
+
   include(FetchContent)
   set(FETCHCONTENT_QUIET OFF)
-  FetchContent_Declare(
-    qcustomplot
+  FetchContent_Declare(qcustomplot
     URL https://www.qcustomplot.com/release/2.1.0fixed/QCustomPlot-source.tar.gz
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/3rdparty/qcustomplot
-  )
+    )
   FetchContent_MakeAvailable(qcustomplot)
   add_library(qcustomplot STATIC
     ${PROJECT_SOURCE_DIR}/3rdparty/qcustomplot/qcustomplot.h
@@ -81,23 +92,13 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     AUTOMOC ON
     )
 
-  add_library(${PROJECT_NAME}_plot_impl STATIC
-    example/util/rangeScaleView.hpp
-    example/util/minmaxException.hpp
-    example/util/RangeScaler.hpp example/util/src/RangeScaler.cpp
-    )
-  target_link_libraries(${PROJECT_NAME}_plot_impl PUBLIC
-    qcustomplot
-    ${PROJECT_NAME}_impl
-    )
-  target_include_directories(${PROJECT_NAME}_plot_impl PUBLIC
-    ${PROJECT_SOURCE_DIR}
-    )
-
   add_executable(${PROJECT_NAME}_plot
     example/plot.cpp
     )
   target_link_libraries(${PROJECT_NAME}_plot PRIVATE
+    qcustomplot
+    Boost::boost
+    ${PROJECT_NAME}_impl
     ${PROJECT_NAME}_plot_impl
     )
   set_target_properties(${PROJECT_NAME}_plot PROPERTIES
@@ -109,7 +110,7 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
 
   if (ENABLE_TESTING)
     add_executable(${PROJECT_NAME}_plot_impl_ut
-      example/ut/rangeIntegrate.cpp
+      example/ut/range.cpp
       )
     target_link_libraries(${PROJECT_NAME}_plot_impl_ut PUBLIC
       GTest::gtest_main

@@ -5,7 +5,7 @@
 #include "randomUniq/UniformIntDistributionUniq.hpp"
 #include "randomUniq/util/RandomDevice.hpp"
 #include "ui_FormMain.h"
-#include "util/rangeIntegrate.hpp"
+#include "util/range.hpp"
 #include <map>
 #include <QApplication>
 #include <range/v3/numeric/accumulate.hpp>
