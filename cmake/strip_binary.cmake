@@ -1,4 +1,4 @@
-function(strip_target_binary TARGET)
+function(strip_output_binary TARGET)
   if (${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Linux")
     add_custom_command(
       TARGET ${TARGET}

@@ -13,7 +13,6 @@
 #include <boost/hana/keys.hpp>
 #include <boost/hana/map.hpp>
 #include <boost/hana/string.hpp>
-#include <map>
 #include <QApplication>
 #include <unordered_map>
 
