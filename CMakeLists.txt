@@ -10,6 +10,10 @@ if (ENABLE_TESTING)
   add_subdirectory(3rdparty/gtest)
 endif ()
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  add_compile_options(-fconcepts)
+endif ()
+
 add_library(${PROJECT_NAME}_impl STATIC
   include/randomUniq/util/RandomDevice.hpp
   include/randomUniq/util/minmaxException.hpp
@@ -45,11 +49,13 @@ set(QT_VERSION_MAJOR 5)
 set(${PROJECT_NAME}_plot_REQUIRED_LIBS Core Widgets PrintSupport)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ${${PROJECT_NAME}_plot_REQUIRED_LIBS})
 if (Qt${QT_VERSION_MAJOR}_FOUND)
+  message(STATUS "Qt ${Qt${QT_VERSION_MAJOR}_VERSION} found")
 
   add_library(${PROJECT_NAME}_plot_impl STATIC
     example/util/rangeScaleView.hpp
     example/util/rangeIntegrate.hpp
     example/util/generator.hpp
+    example/util/SharedFromInstance.hpp
     example/util/RangeScaler.hpp example/util/src/RangeScaler.cpp
     )
   target_link_libraries(${PROJECT_NAME}_plot_impl PUBLIC
@@ -103,15 +109,23 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     ${PROJECT_NAME}_impl
     ${PROJECT_NAME}_plot_impl
     )
-  target_compile_definitions(${PROJECT_NAME}_plot PUBLIC
-    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebugInfo>>:BOOST_MULTI_INDEX_ENABLE_SAFE_MODE BOOST_MULTI_INDEX_INVARIANT_ASSERT>
+  target_compile_definitions(${PROJECT_NAME}_plot
+    PUBLIC
+    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:BOOST_MULTI_INDEX_ENABLE_SAFE_MODE BOOST_MULTI_INDEX_INVARIANT_ASSERT>
+    PRIVATE
+    BOOST_HANA_CONFIG_ENABLE_STRING_UDL
     )
   set_target_properties(${PROJECT_NAME}_plot PROPERTIES
     AUTOMOC ON
     AUTOUIC ON
     AUTOUIC_SEARCH_PATHS example
     INCLUDE_CURRENT_DIR ON
+    $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:INTERPROCEDURAL_OPTIMIZATION ON>
     )
+  if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+    include(cmake/strip_exe.cmake)
+    strip_target_binary(${PROJECT_NAME}_plot)
+  endif ()
 
   if (ENABLE_TESTING)
     add_executable(${PROJECT_NAME}_plot_impl_ut
