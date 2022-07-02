@@ -123,8 +123,11 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:INTERPROCEDURAL_OPTIMIZATION ON>
     )
   if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
-    include(cmake/strip_exe.cmake)
-    strip_target_binary(${PROJECT_NAME}_plot)
+    include(cmake/strip_binary.cmake)
+    strip_output_binary(${PROJECT_NAME}_plot)
+
+    include(cmake/compress_7z_output_binary.cmake)
+    compress_7z_output_binary(${PROJECT_NAME}_plot)
   endif ()
 
   if (ENABLE_TESTING)
