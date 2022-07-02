@@ -103,6 +103,9 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     ${PROJECT_NAME}_impl
     ${PROJECT_NAME}_plot_impl
     )
+  target_compile_definitions(${PROJECT_NAME}_plot PUBLIC
+    $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebugInfo>>:BOOST_MULTI_INDEX_ENABLE_SAFE_MODE BOOST_MULTI_INDEX_INVARIANT_ASSERT>
+    )
   set_target_properties(${PROJECT_NAME}_plot PROPERTIES
     AUTOMOC ON
     AUTOUIC ON
