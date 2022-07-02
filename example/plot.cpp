@@ -2,14 +2,17 @@
 // Created by dym on 29.06.22.
 //
 
+#include "example/util/rangeScaleView.hpp"
 #include "randomUniq/UniformIntDistributionUniq.hpp"
 #include "randomUniq/util/RandomDevice.hpp"
 #include "ui_FormMain.h"
-#include "util/range.hpp"
+#include <boost/hana/string.hpp>
+#include <boost/hana/map.hpp>
 #include <map>
 #include <QApplication>
 #include <range/v3/numeric/accumulate.hpp>
 #include <range/v3/view/iota.hpp>
+#include <range/v3/view/generate.hpp>
 
 
 namespace {
@@ -23,6 +26,12 @@ void setVisibleWidget(bool visible, QWidget* w1, auto*... ws) {
 class Plot final : public QMainWindow
     , private Ui::FormMain {
   Q_OBJECT
+private:
+//  static constexpr auto stringToMethodHana_ = boost::hana::make_map (
+//    boost::hana::make_pair(BOOST_HANA_STRING("UniformIntDistributionUniq LinearDoobleGen"), ranges::views::generate([]{
+//      return true;
+//    }))
+//    );
 public:
   Plot()
       : stringToMethod_{

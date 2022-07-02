@@ -7,10 +7,11 @@
 #include "randomUniq/util/RandomDevice.hpp"
 #include <numeric>
 
+
 namespace urand {
 
 template<typename T_>
-class UniformIntDistribution {
+class [[deprecated]] UniformIntDistribution final {
   static_assert(std::is_integral_v<T_>);
 
 public:

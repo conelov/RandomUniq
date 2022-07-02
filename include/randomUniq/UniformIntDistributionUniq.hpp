@@ -34,12 +34,12 @@ public:
   }
 
 
-  value_type get() {
+  value_type get(auto& rd = util::RandomDevice<std::mt19937>::get()) {
     if (!totalCounter_) {
       throw std::runtime_error("no contained number");
     }
     const auto _       = gsl::finally([this] { --totalCounter_; });
-    const auto itRange = [this] {
+    const auto itRange = [&, this] {
       if constexpr (GenType == UniformIntDistributionUniqGenType::LinearDoobleGen) {
         double       res    = 0;
         const double random = std::uniform_real_distribution<double>(0, 1)(util::RandomDevice<std::mt19937>::get());
@@ -51,7 +51,7 @@ public:
         }
         return std::prev(ranges_.end());
       } else {
-        return std::next(ranges_.begin(), std::uniform_int_distribution<int>(0, ranges_.size() - 1)(util::RandomDevice<std::mt19937>::get()));
+        return std::next(ranges_.begin(), std::uniform_int_distribution<int>(0, ranges_.size() - 1)(rd));
       }
     }();
 
@@ -60,7 +60,7 @@ public:
       ranges_.erase(itRange);
       return result;
     }
-    value_type const result = std::uniform_int_distribution<value_type>(itRange->min, itRange->max)(util::RandomDevice<std::mt19937>::get());
+    value_type const result = std::uniform_int_distribution<value_type>(itRange->min, itRange->max)(rd);
 
     if (itRange->min == result) {
       return itRange->min++;
@@ -76,6 +76,16 @@ public:
     }
 
     return result;
+  }
+
+
+  value_type get() {
+    return get(util::RandomDevice<std::mt19937>::get());
+  }
+
+
+  value_type operator()(auto& rd) {
+    return get(rd);
   }
 
 
@@ -113,22 +123,5 @@ private:
 private:
   std::vector<Range> ranges_;
   std::size_t        totalCounter_;
-
-private:
-  //  auto rangeRandom() const noexcept {
-  //    if constexpr (GenType == UniformIntDistributionUniqGenType::LinearDoobleGen) {
-  //      double       res    = 0;
-  //      const double random = std::uniform_real_distribution<double>(0, 1)(util::RandomDevice<std::mt19937>::get());
-  //      for (auto it = ranges_.begin(); it != ranges_.end(); ++it) {
-  //        res += it->chance(totalCounter_);
-  //        if (res >= random) {
-  //          return it;
-  //        }
-  //      }
-  //      return std::prev(ranges_.end());
-  //    } else {
-  //      return std::next(ranges_.begin(), std::uniform_int_distribution<int>(0, ranges_.size() - 1)(util::RandomDevice<std::mt19937>::get()));
-  //    }
-  //  }
 };
 }// namespace urand
