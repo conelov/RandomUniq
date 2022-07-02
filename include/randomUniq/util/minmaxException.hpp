@@ -8,11 +8,11 @@
 #include <utility>
 
 
-namespace urand::plot::util {
+namespace urand::util {
 
 void minmaxException(auto&& lhs, auto&& rhs) {
   if (std::forward<decltype(lhs)>(lhs) > std::forward<decltype(rhs)>(rhs)) {
     throw std::invalid_argument("lhs > rhs");
   }
 }
-}// namespace urand::plot::util
+}// namespace urand::util

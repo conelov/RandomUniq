@@ -2,9 +2,11 @@
 // Created by dym on 01.07.22.
 //
 
+#include "example/util/generator.hpp"
 #include "example/util/rangeScaleView.hpp"
 #include <gtest/gtest.h>
 #include <range/v3/algorithm/equal.hpp>
+#include <range/v3/algorithm/sort.hpp>
 #include <range/v3/view/single.hpp>
 #include <range/v3/view/zip.hpp>
 
@@ -54,4 +56,16 @@ TEST(PROJECT_NAME_RandomUniq, rangeScaleView) {
       mod,
       _::PairComp{}));
   }
+}
+
+TEST(PROJECT_NAME_RandomUniq, generator) {
+  using namespace urand::plot::util;
+  constexpr std::size_t          count = 999;
+  std::array<std::size_t, count> source;
+  for (auto gen = uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(0, count - 1);
+       auto& i : source) {
+    i = gen();
+  }
+  ranges::sort(source);
+  ASSERT_TRUE(ranges::equal(ranges::views::iota(0u, count), source));
 }

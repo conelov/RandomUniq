@@ -2,17 +2,13 @@
 // Created by dym on 29.06.22.
 //
 
+#include "example/util/generator.hpp"
 #include "example/util/rangeScaleView.hpp"
-#include "randomUniq/UniformIntDistributionUniq.hpp"
-#include "randomUniq/util/RandomDevice.hpp"
 #include "ui_FormMain.h"
-#include <boost/hana/string.hpp>
 #include <boost/hana/map.hpp>
+#include <boost/hana/string.hpp>
 #include <map>
 #include <QApplication>
-#include <range/v3/numeric/accumulate.hpp>
-#include <range/v3/view/iota.hpp>
-#include <range/v3/view/generate.hpp>
 
 
 namespace {
@@ -27,19 +23,16 @@ class Plot final : public QMainWindow
     , private Ui::FormMain {
   Q_OBJECT
 private:
-//  static constexpr auto stringToMethodHana_ = boost::hana::make_map (
-//    boost::hana::make_pair(BOOST_HANA_STRING("UniformIntDistributionUniq LinearDoobleGen"), ranges::views::generate([]{
-//      return true;
-//    }))
-//    );
+  static constexpr auto stringToMethodHana_ = boost::hana::make_map(
+    boost::hana::make_pair(BOOST_HANA_STRING("UniformIntDistributionUniq LinearDoobleGen"), [](auto l, auto r) {
+      return uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(l, r);
+    }),
+    boost::hana::make_pair(BOOST_HANA_STRING("UniformIntDistributionUniq NonLinearEqualChanceRange"), [](auto l, auto r) {
+      return uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(l, r);
+    }));
+
 public:
-  Plot()
-      : stringToMethod_{
-        {"UniformIntDistributionUniq LinearDoobleGen", &Plot::method_UniformIntDistributionUniq_LinearDoobleGen},
-        {"UniformIntDistributionUniq NonLinearEqualChanceRange", &Plot::method_UniformIntDistributionUniq_NonLinearEqualChanceRange},
-        {"linear", &Plot::method_linear},
-        {"linear x3", &Plot::method_linear_x3},
-      } {
+  Plot() {
     setupUi(this);
 
     cb_genMethod->clear();
@@ -55,11 +48,16 @@ private:
   using Data_ = std::map<std::size_t, std::size_t>;
 
 private:
-  const std::map<QString, Data_ (Plot::*)()> stringToMethod_;
-  Data_                                      data_;
+  /*const std::map<QString, Data_ (Plot::*)()> stringToMethod_ = {
+    {"UniformIntDistributionUniq LinearDoobleGen", &Plot::method_UniformIntDistributionUniq_LinearDoobleGen},
+    {"UniformIntDistributionUniq NonLinearEqualChanceRange", &Plot::method_UniformIntDistributionUniq_NonLinearEqualChanceRange},
+    {"linear", &Plot::method_linear},
+    {"linear x3", &Plot::method_linear_x3},
+  };*/
+  Data_ data_;
 
 private:
-  template<urand::UniformIntDistributionUniqGenType GenType>
+  /*template<urand::UniformIntDistributionUniqGenType GenType>
   Data_ uniformIntDistributionUniqAtType() {
     const std::size_t                                       repeatCount = sp_repeatCount->value();
     Data_                                                   data;
@@ -107,7 +105,7 @@ private:
 
   void rangeIntegrate(double const toMin, double const toMax, std::size_t const toCount, auto&& f) const {
   }
-
+*/
 
   void replot() {
     qcp_plot->clearGraphs();

@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "example/util/minmaxException.hpp"
 #include "example/util/RangeScaler.hpp"
+#include "randomUniq/util/minmaxException.hpp"
 #include <range/v3/numeric/accumulate.hpp>
 #include <range/v3/range/operations.hpp>
 #include <range/v3/view/chunk_by.hpp>
@@ -15,8 +15,8 @@
 namespace urand::plot::util {
 
 auto rangeScaleView(auto fromMin, auto fromMax, std::size_t count, auto toMin, auto toMax) {
-  minmaxException(fromMin, fromMax);
-  minmaxException(toMin, toMax);
+  urand::util::minmaxException(fromMin, fromMax);
+  urand::util::minmaxException(toMin, toMax);
 
   return ranges::views::transform(
            [count, scaler = RangeScaler(fromMin, fromMax, toMin, toMax * count)](auto pair) {

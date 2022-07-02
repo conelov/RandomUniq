@@ -12,6 +12,7 @@ endif ()
 
 add_library(${PROJECT_NAME}_impl STATIC
   include/randomUniq/util/RandomDevice.hpp
+  include/randomUniq/util/minmaxException.hpp
 
   include/randomUniq/UniformIntDistributionUniq.hpp
   include/randomUniq/UniformIntDistribution.hpp
@@ -46,9 +47,9 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ${${PROJECT_NAME}_plot_REQUIRED_LI
 if (Qt${QT_VERSION_MAJOR}_FOUND)
 
   add_library(${PROJECT_NAME}_plot_impl STATIC
-    example/util/minmaxException.hpp
     example/util/rangeScaleView.hpp
     example/util/rangeIntegrate.hpp
+    example/util/generator.hpp
     example/util/RangeScaler.hpp example/util/src/RangeScaler.cpp
     )
   target_link_libraries(${PROJECT_NAME}_plot_impl PUBLIC
@@ -87,6 +88,7 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     )
   target_compile_options(qcustomplot PRIVATE
     -Wno-deprecated-declarations
+    -Wno-deprecated-enum-enum-conversion
     )
   set_target_properties(qcustomplot PROPERTIES
     AUTOMOC ON
@@ -110,10 +112,11 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
 
   if (ENABLE_TESTING)
     add_executable(${PROJECT_NAME}_plot_impl_ut
-      example/ut/range.cpp
+      example/util/ut/ut.cpp
       )
     target_link_libraries(${PROJECT_NAME}_plot_impl_ut PUBLIC
       GTest::gtest_main
+      ${PROJECT_NAME}_impl
       ${PROJECT_NAME}_plot_impl
       )
   endif ()
