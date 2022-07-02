@@ -13,6 +13,7 @@
 #include <boost/hana/keys.hpp>
 #include <boost/hana/map.hpp>
 #include <boost/hana/string.hpp>
+#include <map>
 #include <QApplication>
 #include <unordered_map>
 
@@ -48,19 +49,23 @@ private:
     boost::bimaps::vector_of_relation>;
 
 private:
-  static constexpr auto stringToMethod_ = boost::hana::make_map(
-    boost::hana::make_pair(BOOST_HANA_STRING("UniformIntDistributionUniq LinearDoobleGen"), [](auto l, auto r) {
-      return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(l, r);
-    }),
-    boost::hana::make_pair(BOOST_HANA_STRING("UniformIntDistributionUniq NonLinearEqualChanceRange"), [](auto l, auto r) {
-      return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(l, r);
-    }),
-    boost::hana::make_pair(BOOST_HANA_STRING("linear"), [](auto l, auto r) {
-      return urand::plot::util::uniformIntDistributionLinearMid<1>(l, r);
-    }),
-    boost::hana::make_pair(BOOST_HANA_STRING("linear x3"), [](auto l, auto r) {
-      return urand::plot::util::uniformIntDistributionLinearMid<3>(l, r);
-    }));
+  static constexpr auto stringToMethod_ = [] {
+    using namespace boost::hana::literals;
+    using boost::hana::make_pair;
+    return boost::hana::make_map(
+      make_pair("UniformIntDistributionUniq LinearDoobleGen"_s, [](auto l, auto r) {
+        return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(l, r);
+      }),
+      make_pair("UniformIntDistributionUniq NonLinearEqualChanceRange"_s, [](auto l, auto r) {
+        return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(l, r);
+      }),
+      make_pair("linear"_s, [](auto l, auto r) {
+        return urand::plot::util::uniformIntDistributionLinearMid<1>(l, r);
+      }),
+      make_pair("linear x3"_s, [](auto l, auto r) {
+        return urand::plot::util::uniformIntDistributionLinearMid<3>(l, r);
+      }));
+  }();
   Data_ data_;
 
 private:
@@ -78,7 +83,7 @@ private:
       graph->addData(key, value);
     }
     setRange(*qcp_plot->xAxis, data_.left.begin()->first, std::prev(data_.left.end())->first);
-    setRange(*qcp_plot->yAxis, 0, std::prev(data_.right.end())->first);
+    setRange(*qcp_plot->yAxis, 0u, std::prev(data_.right.end())->first);
 
     qcp_plot->replot();
   }
@@ -101,8 +106,8 @@ private slots:
       }
       data_.clear();
       std::unordered_map<std::size_t, std::size_t> mapTmp;
-      for (auto       gen = boost::hana::second(pair)(sb_rangeMin->value(), sb_rangeMax->value());
-           auto const i : ranges::views::iota(0, sp_repeatCount->value())) {
+      for (auto                        gen = boost::hana::second(pair)(sb_rangeMin->value(), sb_rangeMax->value());
+           [[maybe_unused]] auto const i : ranges::views::iota(0, sp_repeatCount->value())) {
         ++mapTmp[gen()];
       }
       for (auto const [key, value] : std::move(mapTmp)) {
