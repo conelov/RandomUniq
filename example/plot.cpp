@@ -11,6 +11,7 @@
 #include <boost/hana/for_each.hpp>
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/unpack.hpp>
+#include <boost/hana/zip.hpp>
 #include <boost/preprocessor/stringize.hpp>
 #include <QApplication>
 #include <QStyleFactory>
@@ -21,23 +22,24 @@ namespace {
 
 using GenCtor = std::function<std::function<std::size_t()>()>;
 
+
 enum class GenConstraint : std::uint8_t {
   Limited,
   Unlimited
+};
+
+
+struct GenMem final {
+  int rangeMax, rangeMin, repeatCount;
 };
 }// namespace
 
 Q_DECLARE_METATYPE(GenCtor)
 Q_DECLARE_METATYPE(GenConstraint)
+Q_DECLARE_METATYPE(GenMem)
 
 
 namespace {
-
-void setVisibleWidget(bool visible, QWidget* w1, auto*... ws) {
-  w1->setVisible(visible);
-  (ws->setVisible(visible), ...);
-}
-
 
 class Plot final : public QMainWindow
     , private Ui::FormMain {
@@ -56,43 +58,46 @@ public:
           [](auto l, auto r) {
             return urand::plot::util::uniformIntDistributionLinearMid<3>(l, r);
           },
-          GenConstraint::Unlimited),
+          GenConstraint::Unlimited,
+          GenMem{0, 1'000, 10'000}),
         hana::make_tuple(
           "linear",
           [](auto l, auto r) {
             return urand::plot::util::uniformIntDistributionLinearMid<1>(l, r);
           },
-          GenConstraint::Unlimited),
+          GenConstraint::Unlimited,
+          GenMem{0, 1'000, 10'000}),
         hana::make_tuple(
           "UniformIntDistributionUniq LinearDoobleGen",
           [](auto l, auto r) {
             return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(l, r);
           },
-          GenConstraint::Limited),
+          GenConstraint::Limited,
+          GenMem{0, 100, 50}),
         hana::make_tuple(
           "UniformIntDistributionUniq NonLinearEqualChanceRange",
           [](auto l, auto r) {
             return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(l, r);
           },
-          GenConstraint::Limited)),
+          GenConstraint::Limited,
+          GenMem{0, 100, 50})),
       [this](auto&& i) {
         hana::unpack(std::forward<decltype(i)>(i),
-          [this](auto&& name, auto&& gen, GenConstraint constraint) {
+          [this](auto&& name, auto&& gen, GenConstraint constraint, GenMem mem) {
             QObject* obj = new QObject{this};
             obj->setProperty("gen", QVariant::fromValue(GenCtor{[this, gen] {
               return std::invoke(gen, sb_rangeMin->value(), sb_rangeMax->value());
             }}));
-            obj->setProperty("genConstraint", QVariant::fromValue(constraint));
+            obj->setProperty(BOOST_PP_STRINGIZE(GenConstraint), QVariant::fromValue(constraint));
+            obj->setProperty(BOOST_PP_STRINGIZE(GenMem), QVariant::fromValue(mem));
             cb_genMethod->addItem(std::forward<decltype(name)>(name), QVariant::fromValue(obj));
           });
       });
-
 
     for (auto const sb : {sb_rangeMin, sb_rangeMax}) {
       QObject::connect(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRangeChanged);
       QObject::connect(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRepeatCountLimitUpdate);
     }
-    QObject::connect(cb_genMethod, qOverload<int>(&QComboBox::currentIndexChanged), this, &Plot::sbRepeatCountLimitUpdate);
     sbRepeatCountLimitUpdate();
 
     on_sb_customXScale_toggled(sb_customXScale->isChecked());
@@ -106,15 +111,22 @@ private:
     boost::bimaps::vector_of_relation>;
 
 private:
+  int  cb_genMethodPrevIdx = 0;
   Data data_;
 
 private:
-  void setRange(QCPAxis& axis, auto min, auto max) {
+  static void setVisibleWidget(bool visible, QWidget* w1, auto*... ws) {
+    w1->setVisible(visible);
+    (ws->setVisible(visible), ...);
+  }
+
+
+  static void setRange(QCPAxis& axis, auto min, auto max) {
     assert(max >= min);
     axis.setRange(min - min * .01, max + max * .01);
   }
 
-
+private:
   void replot() {
     qcp_plot->clearGraphs();
     const auto graph = qcp_plot->addGraph();
@@ -129,8 +141,33 @@ private:
   }
 
 
-  QObject* currentGenInfo() {
-    return cb_genMethod->itemData(cb_genMethod->currentIndex()).value<QObject*>();
+  QObject* genInfo(int idx) {
+    return cb_genMethod->itemData(idx).value<QObject*>();
+  }
+
+
+  QObject* genInfo() {
+    return genInfo(cb_genMethod->currentIndex());
+  }
+
+
+  void setUiFromGenMem(GenMem v) {
+    for (auto const [ui, mem] : boost::hana::zip(
+           std::array{sb_rangeMin, sb_rangeMax, sb_repeatCount},
+           std::array{&GenMem::rangeMin, &GenMem::rangeMax, &GenMem::repeatCount})) {
+      QSignalBlocker const _{ui};
+      std::mem_fn (&QSpinBox::setValue)(ui, std::invoke(mem, v));
+    }
+    sb_rangeMin->setValue(v.rangeMin);
+    sb_rangeMax->setValue(v.rangeMax);
+    sb_repeatCount->setValue(v.repeatCount);
+  }
+
+
+  GenMem genMemFromUi() const {
+    return {sb_rangeMin->value(),
+      sb_rangeMax->value(),
+      sb_repeatCount->value()};
   }
 
 private slots:
@@ -145,13 +182,15 @@ private slots:
 
 
   void sbRepeatCountLimitUpdate() {
-    switch (currentGenInfo()->property("genConstraint").value<GenConstraint>()) {
+    switch (genInfo()->property(BOOST_PP_STRINGIZE(GenConstraint)).value<GenConstraint>()) {
       case GenConstraint::Limited:
         sb_repeatCount->setMaximum(sb_rangeMax->value() - sb_rangeMin->value() + 1);
         break;
       case GenConstraint::Unlimited:
         sb_repeatCount->setMaximum(std::numeric_limits<int>::max());
         break;
+      default:
+        assert(false);
     }
   }
 
@@ -170,7 +209,7 @@ private slots:
     data_.clear();
     {
       std::unordered_map<std::size_t, std::size_t> mapTmp;
-      auto                                         gen = currentGenInfo()->property("gen").value<GenCtor>()();
+      auto                                         gen = genInfo()->property("gen").value<GenCtor>()();
       for ([[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
         ++mapTmp[gen()];
       }
@@ -179,6 +218,13 @@ private slots:
       }
     }
     replot();
+  }
+
+
+  void on_cb_genMethod_currentIndexChanged(int idx) {
+    genInfo(cb_genMethodPrevIdx)->setProperty(BOOST_PP_STRINGIZE(GenMem), QVariant::fromValue(genMemFromUi()));
+    setUiFromGenMem(genInfo(idx)->property(BOOST_PP_STRINGIZE(GenMem)).value<GenMem>());
+    cb_genMethodPrevIdx = idx;
   }
 };
 }// namespace

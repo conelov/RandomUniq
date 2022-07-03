@@ -16,7 +16,7 @@ endif ()
 
 add_library(${PROJECT_NAME}_impl STATIC
   include/randomUniq/util/RandomDevice.hpp
-#  include/randomUniq/util/Range.hpp
+  #  include/randomUniq/util/Range.hpp
 
   include/randomUniq/UniformIntDistributionUniq.hpp
   include/randomUniq/UniformIntDistribution.hpp
@@ -56,7 +56,7 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     example/util/rangeScaleView.hpp
     example/util/rangeIntegrate.hpp
     example/util/generator.hpp
-#    example/util/SharedFromInstance.hpp
+    #    example/util/SharedFromInstance.hpp
     example/util/RangeScaler.hpp example/util/src/RangeScaler.cpp
     )
   target_link_libraries(${PROJECT_NAME}_plot_impl PUBLIC
@@ -114,7 +114,7 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     PUBLIC
     $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:BOOST_MULTI_INDEX_ENABLE_SAFE_MODE BOOST_MULTI_INDEX_INVARIANT_ASSERT>
     PRIVATE
-    BOOST_HANA_CONFIG_ENABLE_STRING_UDL
+    #    BOOST_HANA_CONFIG_ENABLE_STRING_UDL
     )
   set_target_properties(${PROJECT_NAME}_plot PROPERTIES
     AUTOMOC ON
