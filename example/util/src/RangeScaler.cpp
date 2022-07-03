@@ -3,7 +3,7 @@
 //
 
 #include "example/util/RangeScaler.hpp"
-#include "include/randomUniq/util/minmaxException.hpp"
+#include <cassert>
 
 
 namespace urand::plot::util {
@@ -12,8 +12,8 @@ RangeScaler::RangeScaler(double minOld, double maxOld, double minNew, double max
     : minOld_(minOld)
     , maxOld_(maxOld)
     , newDif_(maxNew - minNew) {
-  urand::util::minmaxException(minOld, maxOld);
-  urand::util::minmaxException(minNew, maxNew);
+  assert(maxOld >= minOld);
+  assert(maxNew >= minNew);
 }
 
 

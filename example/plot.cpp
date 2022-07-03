@@ -3,7 +3,6 @@
 //
 
 #include "example/util/generator.hpp"
-#include "example/util/rangeScaleView.hpp"
 #include "ui_FormMain.h"
 #include <boost/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
@@ -13,6 +12,7 @@
 #include <boost/hana/keys.hpp>
 #include <boost/hana/map.hpp>
 #include <boost/hana/string.hpp>
+#include <boost/preprocessor/stringize.hpp>
 #include <QApplication>
 #include <unordered_map>
 
@@ -31,9 +31,10 @@ class Plot final : public QMainWindow
 public:
   Plot() {
     setupUi(this);
+    setWindowTitle(BOOST_PP_STRINGIZE(PROJECT_NAME_RandomUniq));
 
     cb_genMethod->clear();
-    boost::hana::for_each(boost::hana::keys(stringToMethod_), [this](auto&& str) {
+    boost::hana::for_each(boost::hana::keys(genMethodType_), [this](auto&& str) {
       cb_genMethod->addItem(std::forward<decltype(str)>(str).c_str());
     });
 
@@ -42,13 +43,24 @@ public:
   }
 
 private:
-  using Data_ = boost::bimap<
+  struct UiMemData {
+    enum RepeatMode : std::uint8_t {
+      Limited,
+      NonLimited
+    };
+
+    std::size_t rangeMin, rangeMax, repeatCount;
+    RepeatMode  repeatMode;
+  };
+
+
+  using Data = boost::bimap<
     boost::bimaps::set_of<std::size_t>,
     boost::bimaps::multiset_of<std::size_t>,
     boost::bimaps::vector_of_relation>;
 
 private:
-  static constexpr auto stringToMethod_ = [] {
+  static constexpr auto genMethodType_ = [] {
     using namespace boost::hana::literals;
     using boost::hana::make_pair;
     return boost::hana::make_map(
@@ -65,11 +77,11 @@ private:
         return urand::plot::util::uniformIntDistributionLinearMid<3>(l, r);
       }));
   }();
-  Data_ data_;
+  Data data_;
 
 private:
   void setRange(QCPAxis& axis, auto min, auto max) {
-    urand::util::minmaxException(min, max);
+    assert(max >= min);
     axis.setRange(min - min * .01, max + max * .01);
   }
 
@@ -99,7 +111,7 @@ private slots:
   }
 
   void on_pb_gen_released() {
-    boost::hana::for_each(stringToMethod_, [this](auto const& pair) {
+    boost::hana::for_each(genMethodType_, [this](auto const& pair) {
       if (boost::hana::first(pair).c_str() != cb_genMethod->currentText()) {
         return;
       }
