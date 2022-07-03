@@ -23,7 +23,7 @@ auto uniformIntDistributionUniqAtType(auto l, auto r) {
 template<std::size_t mid>
 auto uniformIntDistributionLinearMid(auto l, auto r) {
   static_assert(mid);
-  urand::util::minmaxException(l, r);
+  assert(r >= l);
   return [gen = std::uniform_int_distribution<std::size_t>(l, r)]() mutable {
     return ranges::accumulate(ranges::views::iota(0u, mid), 0, [&](const auto lhs, const auto rhs) {
       return lhs + gen(urand::util::RandomDevice<std::mt19937>::get());

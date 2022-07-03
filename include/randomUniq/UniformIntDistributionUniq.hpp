@@ -1,6 +1,5 @@
 #pragma once
 
-#include "randomUniq/util/minmaxException.hpp"
 #include "randomUniq/util/RandomDevice.hpp"
 #include <cstdint>
 #include <gsl/util>
@@ -28,7 +27,9 @@ public:
   UniformIntDistributionUniq(value_type min = std::numeric_limits<value_type>::min(),
     value_type                          max = std::numeric_limits<value_type>::max())
       : totalCounter_(max - min + 1) {
-    util::minmaxException(min, max);
+    if (min > max) {
+      throw std::invalid_argument("min > max");
+    }
     ranges_.push_back({min, max});
   }
 
