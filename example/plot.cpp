@@ -8,11 +8,8 @@
 #include <boost/bimap/multiset_of.hpp>
 #include <boost/bimap/set_of.hpp>
 #include <boost/bimap/vector_of.hpp>
-#include <boost/hana/for_each.hpp>
-#include <boost/hana/keys.hpp>
-#include <boost/hana/map.hpp>
-#include <boost/hana/string.hpp>
 #include <boost/preprocessor/stringize.hpp>
+#include <QAbstractListModel>
 #include <QApplication>
 #include <unordered_map>
 
@@ -25,61 +22,117 @@ void setVisibleWidget(bool visible, QWidget* w1, auto*... ws) {
 }
 
 
+class GenMethodModel final : public QAbstractListModel {
+  Q_OBJECT
+public:
+  enum MethodIndex {
+    Index = Qt::UserRole,
+    Name,
+    Ctor
+  };
+
+
+  enum GenRepeatMode : std::uint8_t {
+    Limited,
+    NonLimited
+  };
+
+public:
+  struct Method final {
+    using Ctor = std::function<void()> (*)(int, int);
+
+    QString       name;
+    Ctor          ctor;
+    GenRepeatMode repeatMode;
+  };
+
+public:
+  GenMethodModel(QObject& parent)
+      : QAbstractListModel(&parent) {
+  }
+
+
+  int rowCount(const QModelIndex& parent) const override {
+    return data_.size();
+  }
+
+
+  QVariant data(const QModelIndex& index, int role) const override;
+
+private:
+  std::array<Method, 4> const data_{
+    Method{
+      "UniformIntDistributionUniq LinearDoobleGen",
+      [](auto l, auto r) -> std::function<void()> {
+        return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(l, r);
+      },
+      Limited},
+    Method{"UniformIntDistributionUniq NonLinearEqualChanceRange",
+      [](auto l, auto r) -> std::function<void()> {
+        return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(l, r);
+      },
+      Limited},
+    Method{"linear",
+      [](auto l, auto r) -> std::function<void()> {
+        return urand::plot::util::uniformIntDistributionLinearMid<1>(l, r);
+      },
+      NonLimited},
+    Method{"linear x3",
+      [](auto l, auto r) -> std::function<void()> {
+        return urand::plot::util::uniformIntDistributionLinearMid<3>(l, r);
+      },
+      NonLimited}};
+};
+}// namespace
+
+Q_DECLARE_METATYPE(GenMethodModel::Method::Ctor)
+
+
+namespace {
+
+QVariant GenMethodModel::data(const QModelIndex& index, int role) const {
+  if (index.isValid()) {
+    switch (role) {
+      case Name:
+      case Qt::DisplayRole:
+        return data_[index.row()].name;
+      case Index:
+        return index.row();
+      case Ctor:
+        return QVariant::fromValue(data_[index.row()].ctor);
+    }
+  }
+
+  return {};
+}
+
+
 class Plot final : public QMainWindow
     , private Ui::FormMain {
   Q_OBJECT
 public:
   Plot() {
     setupUi(this);
-    setWindowTitle(BOOST_PP_STRINGIZE(PROJECT_NAME_RandomUniq));
+    setWindowTitle(BOOST_PP_STRINGIZE(PROJECT_NAME));
 
     cb_genMethod->clear();
-    boost::hana::for_each(boost::hana::keys(genMethodType_), [this](auto&& str) {
-      cb_genMethod->addItem(std::forward<decltype(str)>(str).c_str());
-    });
+    //    boost::hana::for_each(boost::hana::keys(genMethodType_), [this](auto&& str) {
+    //      cb_genMethod->addItem(std::forward<decltype(str)>(str).c_str());
+    //    });
 
     on_cb_customXScale_toggled(cb_customXScale->isChecked());
     on_cb_customYScale_toggled(cb_customYScale->isChecked());
   }
 
 private:
-  enum class GenRepeatMode : std::uint8_t {
-    Limited,
-    NonLimited
-  };
-
-
-  template<GenRepeatMode genRepeatMode_, auto ctor_>
-  struct GenInfo final {
-    static constexpr auto          ctor       = ctor_;
-    static constexpr GenRepeatMode repeatMode = genRepeatMode_;
-  };
-
-
   using Data = boost::bimap<
     boost::bimaps::set_of<std::size_t>,
     boost::bimaps::multiset_of<std::size_t>,
     boost::bimaps::vector_of_relation>;
 
 private:
-  static constexpr auto genMethodType_ = [] {
-    using namespace boost::hana::literals;
-    using boost::hana::make_pair;
-    return boost::hana::make_map(
-      make_pair("UniformIntDistributionUniq LinearDoobleGen"_s, GenInfo<GenRepeatMode::Limited, [](auto l, auto r) {
-        return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(l, r);
-      }>{}),
-      make_pair("UniformIntDistributionUniq NonLinearEqualChanceRange"_s, GenInfo<GenRepeatMode::Limited, [](auto l, auto r) {
-        return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(l, r);
-      }>{}),
-      make_pair("linear"_s, GenInfo<GenRepeatMode::NonLimited, [](auto l, auto r) {
-        return urand::plot::util::uniformIntDistributionLinearMid<1>(l, r);
-      }>{}),
-      make_pair("linear x3"_s, GenInfo<GenRepeatMode::NonLimited, [](auto l, auto r) {
-        return urand::plot::util::uniformIntDistributionLinearMid<3>(l, r);
-      }>{}));
-  }();
-  Data data_;
+  Data                  data_;
+  GenMethodModel* const genMethodModel = new GenMethodModel{*this};
 
 private:
   void setRange(QCPAxis& axis, auto min, auto max) {
@@ -102,18 +155,18 @@ private:
   }
 
 
-  void setGenRangeConstraints(GenRepeatMode repeatMode) {
-  }
+  //  void setGenRangeConstraints(GenRepeatMode repeatMode) {
+  //  }
 
 
   void setGenRangeConstraints() {
-    setGenRangeConstraints(boost::hana::for_each(genMethodType_, [this](auto const& pair) {
-      if (boost::hana::first(pair).c_str() != cb_genMethod->currentText()) {
-        return;
-      }
-
-      return boost::hana::second(pair).repeatMode;
-    }));
+    //    setGenRangeConstraints(boost::hana::for_each(genMethodType_, [this](auto const& pair) {
+    //      if (boost::hana::first(pair).c_str() != cb_genMethod->currentText()) {
+    //        return;
+    //      }
+    //
+    //      return boost::hana::second(pair).repeatMode;
+    //    }));
   }
 
 private slots:
@@ -127,32 +180,32 @@ private slots:
   }
 
   void on_pb_gen_released() {
-    boost::hana::for_each(genMethodType_, [this](auto const& pair) {
-      if (boost::hana::first(pair).c_str() != cb_genMethod->currentText()) {
-        return;
-      }
-
-      data_.clear();
-      {
-        std::unordered_map<std::size_t, std::size_t> mapTmp;
-        auto                                         gen = boost::hana::second(pair).ctor(sb_rangeMin->value(), sb_rangeMax->value());
-        for ([[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
-          ++mapTmp[gen()];
-        }
-        for (auto const [key, value] : std::move(mapTmp)) {
-          data_.push_back({key, value});
-        }
-      }
-
-      switch (boost::hana::second(pair).repeatMode) {
-        case GenRepeatMode::NonLimited:
-          sb_rangeMax->setValue(std::numeric_limits<int>::max());
-          sb_repeatCount->setValue(std::numeric_limits<int>::max());
-        case GenRepeatMode::Limited:
-        default:
-          assert(false);
-      }
-    });
+    //    boost::hana::for_each(genMethodType_, [this](auto const& pair) {
+    //      if (boost::hana::first(pair).c_str() != cb_genMethod->currentText()) {
+    //        return;
+    //      }
+    //
+    //      data_.clear();
+    //      {
+    //        std::unordered_map<std::size_t, std::size_t> mapTmp;
+    //        auto                                         gen = boost::hana::second(pair).ctor(sb_rangeMin->value(), sb_rangeMax->value());
+    //        for ([[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
+    //          ++mapTmp[gen()];
+    //        }
+    //        for (auto const [key, value] : std::move(mapTmp)) {
+    //          data_.push_back({key, value});
+    //        }
+    //      }
+    //
+    //      switch (boost::hana::second(pair).repeatMode) {
+    //        case GenRepeatMode::NonLimited:
+    //          sb_rangeMax->setValue(std::numeric_limits<int>::max());
+    //          sb_repeatCount->setValue(std::numeric_limits<int>::max());
+    //        case GenRepeatMode::Limited:
+    //        default:
+    //          assert(false);
+    //      }
+    //    });
     replot();
   }
 };
