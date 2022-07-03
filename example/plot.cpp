@@ -43,14 +43,16 @@ public:
   }
 
 private:
-  struct UiMemData {
-    enum RepeatMode : std::uint8_t {
-      Limited,
-      NonLimited
-    };
+  enum class GenRepeatMode : std::uint8_t {
+    Limited,
+    NonLimited
+  };
 
-    std::size_t rangeMin, rangeMax, repeatCount;
-    RepeatMode  repeatMode;
+
+  template<GenRepeatMode genRepeatMode_, auto ctor_>
+  struct GenInfo final {
+    static constexpr auto          ctor       = ctor_;
+    static constexpr GenRepeatMode repeatMode = genRepeatMode_;
   };
 
 
@@ -64,18 +66,18 @@ private:
     using namespace boost::hana::literals;
     using boost::hana::make_pair;
     return boost::hana::make_map(
-      make_pair("UniformIntDistributionUniq LinearDoobleGen"_s, [](auto l, auto r) {
+      make_pair("UniformIntDistributionUniq LinearDoobleGen"_s, GenInfo<GenRepeatMode::Limited, [](auto l, auto r) {
         return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(l, r);
-      }),
-      make_pair("UniformIntDistributionUniq NonLinearEqualChanceRange"_s, [](auto l, auto r) {
+      }>{}),
+      make_pair("UniformIntDistributionUniq NonLinearEqualChanceRange"_s, GenInfo<GenRepeatMode::Limited, [](auto l, auto r) {
         return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(l, r);
-      }),
-      make_pair("linear"_s, [](auto l, auto r) {
+      }>{}),
+      make_pair("linear"_s, GenInfo<GenRepeatMode::NonLimited, [](auto l, auto r) {
         return urand::plot::util::uniformIntDistributionLinearMid<1>(l, r);
-      }),
-      make_pair("linear x3"_s, [](auto l, auto r) {
+      }>{}),
+      make_pair("linear x3"_s, GenInfo<GenRepeatMode::NonLimited, [](auto l, auto r) {
         return urand::plot::util::uniformIntDistributionLinearMid<3>(l, r);
-      }));
+      }>{}));
   }();
   Data data_;
 
@@ -100,6 +102,20 @@ private:
   }
 
 
+  void setGenRangeConstraints(GenRepeatMode repeatMode) {
+  }
+
+
+  void setGenRangeConstraints() {
+    setGenRangeConstraints(boost::hana::for_each(genMethodType_, [this](auto const& pair) {
+      if (boost::hana::first(pair).c_str() != cb_genMethod->currentText()) {
+        return;
+      }
+
+      return boost::hana::second(pair).repeatMode;
+    }));
+  }
+
 private slots:
   void on_cb_customXScale_toggled(bool checked) {
     setVisibleWidget(checked, f_customXScale);
@@ -115,14 +131,26 @@ private slots:
       if (boost::hana::first(pair).c_str() != cb_genMethod->currentText()) {
         return;
       }
+
       data_.clear();
-      std::unordered_map<std::size_t, std::size_t> mapTmp;
-      for (auto                        gen = boost::hana::second(pair)(sb_rangeMin->value(), sb_rangeMax->value());
-           [[maybe_unused]] auto const i : ranges::views::iota(0, sp_repeatCount->value())) {
-        ++mapTmp[gen()];
+      {
+        std::unordered_map<std::size_t, std::size_t> mapTmp;
+        auto                                         gen = boost::hana::second(pair).ctor(sb_rangeMin->value(), sb_rangeMax->value());
+        for ([[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
+          ++mapTmp[gen()];
+        }
+        for (auto const [key, value] : std::move(mapTmp)) {
+          data_.push_back({key, value});
+        }
       }
-      for (auto const [key, value] : std::move(mapTmp)) {
-        data_.push_back({key, value});
+
+      switch (boost::hana::second(pair).repeatMode) {
+        case GenRepeatMode::NonLimited:
+          sb_rangeMax->setValue(std::numeric_limits<int>::max());
+          sb_repeatCount->setValue(std::numeric_limits<int>::max());
+        case GenRepeatMode::Limited:
+        default:
+          assert(false);
       }
     });
     replot();
