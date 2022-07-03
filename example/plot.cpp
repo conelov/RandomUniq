@@ -13,12 +13,13 @@
 #include <boost/hana/unpack.hpp>
 #include <boost/preprocessor/stringize.hpp>
 #include <QApplication>
+#include <QStyleFactory>
 #include <unordered_map>
 
 
 namespace {
 
-using GenCtor = std::function<std::function<void()>()>;
+using GenCtor = std::function<std::function<std::size_t()>()>;
 
 enum class GenConstraint : std::uint8_t {
   Limited,
@@ -51,6 +52,18 @@ public:
     hana::for_each(
       hana::make_tuple(
         hana::make_tuple(
+          "linear x3",
+          [](auto l, auto r) {
+            return urand::plot::util::uniformIntDistributionLinearMid<3>(l, r);
+          },
+          GenConstraint::Unlimited),
+        hana::make_tuple(
+          "linear",
+          [](auto l, auto r) {
+            return urand::plot::util::uniformIntDistributionLinearMid<1>(l, r);
+          },
+          GenConstraint::Unlimited),
+        hana::make_tuple(
           "UniformIntDistributionUniq LinearDoobleGen",
           [](auto l, auto r) {
             return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(l, r);
@@ -61,19 +74,7 @@ public:
           [](auto l, auto r) {
             return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(l, r);
           },
-          GenConstraint::Limited),
-        hana::make_tuple(
-          "linear",
-          [](auto l, auto r) {
-            return urand::plot::util::uniformIntDistributionLinearMid<1>(l, r);
-          },
-          GenConstraint::Unlimited),
-        hana::make_tuple(
-          "linear x3",
-          [](auto l, auto r) {
-            return urand::plot::util::uniformIntDistributionLinearMid<3>(l, r);
-          },
-          GenConstraint::Unlimited)),
+          GenConstraint::Limited)),
       [this](auto&& i) {
         hana::unpack(std::forward<decltype(i)>(i),
           [this](auto&& name, auto&& gen, GenConstraint constraint) {
@@ -92,7 +93,7 @@ public:
       QObject::connect(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRepeatCountLimitUpdate);
     }
     QObject::connect(cb_genMethod, qOverload<int>(&QComboBox::currentIndexChanged), this, &Plot::sbRepeatCountLimitUpdate);
-
+    sbRepeatCountLimitUpdate();
 
     on_sb_customXScale_toggled(sb_customXScale->isChecked());
     on_sb_customYScale_toggled(sb_customYScale->isChecked());
@@ -128,18 +129,8 @@ private:
   }
 
 
-  //  void setGenRangeConstraints(GenRepeatMode repeatMode) {
-  //  }
-
-
-  void setGenRangeConstraints() {
-    //    setGenRangeConstraints(boost::hana::for_each(genMethodType_, [this](auto const& pair) {
-    //      if (boost::hana::first(pair).c_str() != cb_genMethod->currentText()) {
-    //        return;
-    //      }
-    //
-    //      return boost::hana::second(pair).repeatMode;
-    //    }));
+  QObject* currentGenInfo() {
+    return cb_genMethod->itemData(cb_genMethod->currentIndex()).value<QObject*>();
   }
 
 private slots:
@@ -154,7 +145,7 @@ private slots:
 
 
   void sbRepeatCountLimitUpdate() {
-    switch (cb_genMethod->itemData(cb_genMethod->currentIndex()).value<QObject*>()->property("genConstraint").value<GenConstraint>()) {
+    switch (currentGenInfo()->property("genConstraint").value<GenConstraint>()) {
       case GenConstraint::Limited:
         sb_repeatCount->setMaximum(sb_rangeMax->value() - sb_rangeMin->value() + 1);
         break;
@@ -176,32 +167,17 @@ private slots:
 
 
   void on_pb_gen_released() {
-    //    boost::hana::for_each(genMethodType_, [this](auto const& pair) {
-    //      if (boost::hana::first(pair).c_str() != cb_genMethod->currentText()) {
-    //        return;
-    //      }
-    //
-    //      data_.clear();
-    //      {
-    //        std::unordered_map<std::size_t, std::size_t> mapTmp;
-    //        auto                                         gen = boost::hana::second(pair).ctor(sb_rangeMin->value(), sb_rangeMax->value());
-    //        for ([[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
-    //          ++mapTmp[gen()];
-    //        }
-    //        for (auto const [key, value] : std::move(mapTmp)) {
-    //          data_.push_back({key, value});
-    //        }
-    //      }
-    //
-    //      switch (boost::hana::second(pair).repeatMode) {
-    //        case GenRepeatMode::NonLimited:
-    //          sb_rangeMax->setValue(std::numeric_limits<int>::max());
-    //          sb_repeatCount->setValue(std::numeric_limits<int>::max());
-    //        case GenRepeatMode::Limited:
-    //        default:
-    //          assert(false);
-    //      }
-    //    });
+    data_.clear();
+    {
+      std::unordered_map<std::size_t, std::size_t> mapTmp;
+      auto                                         gen = currentGenInfo()->property("gen").value<GenCtor>()();
+      for ([[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
+        ++mapTmp[gen()];
+      }
+      for (auto const [key, value] : std::move(mapTmp)) {
+        data_.push_back({key, value});
+      }
+    }
     replot();
   }
 };
@@ -210,7 +186,12 @@ private slots:
 
 int main(int argc, char* argv[]) {
   QApplication app(argc, argv);
-  Plot         plot;
+  if (QString const preferredStyle = "Fusion";
+      QStyleFactory::keys().contains(preferredStyle)) {
+    QApplication::setStyle(QStyleFactory::create(preferredStyle));
+  }
+
+  Plot plot;
   plot.show();
 
   return QApplication::exec();
