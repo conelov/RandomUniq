@@ -11,10 +11,10 @@
 #include <boost/hana/for_each.hpp>
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/unpack.hpp>
-#include <boost/hana/zip.hpp>
 #include <boost/preprocessor/stringize.hpp>
 #include <QApplication>
 #include <QStyleFactory>
+#include <range/v3/view/zip.hpp>
 #include <unordered_map>
 
 
@@ -30,7 +30,7 @@ enum class GenConstraint : std::uint8_t {
 
 
 struct GenMem final {
-  int rangeMax, rangeMin, repeatCount;
+  int rangeMin, rangeMax, repeatCount;
 };
 }// namespace
 
@@ -49,7 +49,10 @@ public:
     setupUi(this);
     setWindowTitle(BOOST_PP_STRINGIZE(PROJECT_NAME));
 
-    cb_genMethod->clear();
+    {
+      QSignalBlocker const _{cb_genMethod};
+      cb_genMethod->clear();
+    }
     namespace hana = boost::hana;
     hana::for_each(
       hana::make_tuple(
@@ -111,7 +114,7 @@ private:
     boost::bimaps::vector_of_relation>;
 
 private:
-  int  cb_genMethodPrevIdx = 0;
+  int  genMethodIdxPrev = 0;
   Data data_;
 
 private:
@@ -152,15 +155,12 @@ private:
 
 
   void setUiFromGenMem(GenMem v) {
-    for (auto const [ui, mem] : boost::hana::zip(
-           std::array{sb_rangeMin, sb_rangeMax, sb_repeatCount},
-           std::array{&GenMem::rangeMin, &GenMem::rangeMax, &GenMem::repeatCount})) {
+    std::array const sbs{sb_rangeMin, sb_rangeMax, sb_repeatCount};
+    std::array const mems{&GenMem::rangeMin, &GenMem::rangeMax, &GenMem::repeatCount};
+    for (auto const [ui, mem] : ranges::views::zip(sbs, mems)) {
       QSignalBlocker const _{ui};
       std::mem_fn (&QSpinBox::setValue)(ui, std::invoke(mem, v));
     }
-    sb_rangeMin->setValue(v.rangeMin);
-    sb_rangeMax->setValue(v.rangeMax);
-    sb_repeatCount->setValue(v.repeatCount);
   }
 
 
@@ -222,9 +222,9 @@ private slots:
 
 
   void on_cb_genMethod_currentIndexChanged(int idx) {
-    genInfo(cb_genMethodPrevIdx)->setProperty(BOOST_PP_STRINGIZE(GenMem), QVariant::fromValue(genMemFromUi()));
+    genInfo(genMethodIdxPrev)->setProperty(BOOST_PP_STRINGIZE(GenMem), QVariant::fromValue(genMemFromUi()));
     setUiFromGenMem(genInfo(idx)->property(BOOST_PP_STRINGIZE(GenMem)).value<GenMem>());
-    cb_genMethodPrevIdx = idx;
+    genMethodIdxPrev = idx;
   }
 };
 }// namespace
