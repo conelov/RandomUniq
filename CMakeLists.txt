@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(RandomUniq CXX)
+project(RandomUniq VERSION 0.2 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 set(ENABLE_TESTING CACHE ON BOOL "")
@@ -33,6 +33,8 @@ set_target_properties(${PROJECT_NAME}_impl PROPERTIES
   )
 target_compile_definitions(${PROJECT_NAME}_impl PUBLIC
   PROJECT_NAME=${PROJECT_NAME}
+  PROJECT_VERSION=${PROJECT_VERSION}
+  ${PROJECT_NAME}_VERSION=${PROJECT_VERSION}
   $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:${PROJECT_NAME}_RangeCheck>
   )
 
@@ -122,6 +124,7 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     AUTOUIC_SEARCH_PATHS example
     INCLUDE_CURRENT_DIR ON
     $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:INTERPROCEDURAL_OPTIMIZATION ON>
+    OUTPUT_NAME ${PROJECT_NAME}_v${PROJECT_VERSION}
     )
   if (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
     include(cmake/strip_binary.cmake)
