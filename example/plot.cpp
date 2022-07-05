@@ -8,8 +8,12 @@
 #include <boost/bimap/multiset_of.hpp>
 #include <boost/bimap/set_of.hpp>
 #include <boost/bimap/vector_of.hpp>
+#include <boost/hana/at_key.hpp>
 #include <boost/hana/for_each.hpp>
+#include <boost/hana/map.hpp>
+#include <boost/hana/pair.hpp>
 #include <boost/hana/tuple.hpp>
+#include <boost/hana/type.hpp>
 #include <boost/hana/unpack.hpp>
 #include <boost/preprocessor/stringize.hpp>
 #include <QApplication>
@@ -85,16 +89,15 @@ public:
           GenConstraint::Limited,
           GenMem{0, 100, 50})),
       [this](auto&& i) {
-        hana::unpack(std::forward<decltype(i)>(i),
-          [this](auto&& name, auto&& gen, GenConstraint constraint, GenMem mem) {
-            QObject* obj = new QObject{this};
-            obj->setProperty("gen", QVariant::fromValue(GenCtor{[this, gen] {
-              return std::invoke(gen, sb_rangeMin->value(), sb_rangeMax->value());
-            }}));
-            obj->setProperty(BOOST_PP_STRINGIZE(GenConstraint), QVariant::fromValue(constraint));
-            obj->setProperty(BOOST_PP_STRINGIZE(GenMem), QVariant::fromValue(mem));
-            cb_genMethod->addItem(std::forward<decltype(name)>(name), QVariant::fromValue(obj));
-          });
+        hana::unpack(std::forward<decltype(i)>(i), [this](auto&& name, auto&& gen, GenConstraint constraint, GenMem mem) {
+          auto const obj = new QObject{this};
+          obj->setProperty("gen", QVariant::fromValue(GenCtor{[this, gen] {
+            return std::invoke(gen, sb_rangeMin->value(), sb_rangeMax->value());
+          }}));
+          obj->setProperty(BOOST_PP_STRINGIZE(GenConstraint), QVariant::fromValue(constraint));
+          obj->setProperty(BOOST_PP_STRINGIZE(GenMem), QVariant::fromValue(mem));
+          cb_genMethod->addItem(std::forward<decltype(name)>(name), QVariant::fromValue(obj));
+        });
       });
 
     for (auto const sb : {sb_rangeMin, sb_rangeMax}) {
@@ -103,8 +106,10 @@ public:
     }
     sbRepeatCountLimitUpdate();
 
-    on_sb_customXScale_toggled(sb_customXScale->isChecked());
-    on_sb_customYScale_toggled(sb_customYScale->isChecked());
+    on_cb_customXScale_toggled(cb_customXScale->isChecked());
+    on_cb_customYScale_toggled(cb_customYScale->isChecked());
+
+    on_cb_autoRegen_toggled(cb_autoRegen->isChecked());
   }
 
 private:
@@ -114,8 +119,8 @@ private:
     boost::bimaps::vector_of_relation>;
 
 private:
-  int  genMethodIdxPrev = 0;
   Data data_;
+  int  genMethodIdxPrev = 0;
 
 private:
   static void setVisibleWidget(bool visible, QWidget* w1, auto*... ws) {
@@ -171,6 +176,22 @@ private:
   }
 
 private slots:
+  void generate() {
+    data_.clear();
+    {
+      std::unordered_map<std::size_t, std::size_t> mapTmp;
+      auto                                         gen = genInfo()->property("gen").value<GenCtor>()();
+      for ([[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
+        ++mapTmp[gen()];
+      }
+      for (auto const [key, value] : std::move(mapTmp)) {
+        data_.push_back({key, value});
+      }
+    }
+    replot();
+  }
+
+
   void sbRangeChanged() {
     QSignalBlocker const _1{sb_rangeMin}, _2{sb_rangeMax};
     if (sender()->objectName() == BOOST_PP_STRINGIZE(sp_customXScale_max)) {
@@ -195,29 +216,18 @@ private slots:
   }
 
 
-  void on_sb_customXScale_toggled(bool checked) {
+  void on_cb_customXScale_toggled(bool checked) {
     setVisibleWidget(checked, f_customXScale);
   }
 
 
-  void on_sb_customYScale_toggled(bool checked) {
+  void on_cb_customYScale_toggled(bool checked) {
     setVisibleWidget(checked, f_customYScale);
   }
 
 
   void on_pb_gen_released() {
-    data_.clear();
-    {
-      std::unordered_map<std::size_t, std::size_t> mapTmp;
-      auto                                         gen = genInfo()->property("gen").value<GenCtor>()();
-      for ([[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
-        ++mapTmp[gen()];
-      }
-      for (auto const [key, value] : std::move(mapTmp)) {
-        data_.push_back({key, value});
-      }
-    }
-    replot();
+    generate();
   }
 
 
@@ -225,6 +235,24 @@ private slots:
     genInfo(genMethodIdxPrev)->setProperty(BOOST_PP_STRINGIZE(GenMem), QVariant::fromValue(genMemFromUi()));
     setUiFromGenMem(genInfo(idx)->property(BOOST_PP_STRINGIZE(GenMem)).value<GenMem>());
     genMethodIdxPrev = idx;
+  }
+
+
+  void on_cb_autoRegen_toggled(bool checked) {
+    namespace hana = boost::hana;
+    hana::for_each(hana::make_tuple(sb_rangeMin, sb_rangeMax, sb_repeatCount, cb_genMethod), [this, checked](auto i) {
+      constexpr auto sigMap = hana::make_map(
+        hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
+        hana::make_pair(hana::type_c<QComboBox>, qOverload<int>(&QComboBox::currentIndexChanged)));
+      hana::unpack(hana::make_tuple(i, sigMap[hana::type_c<std::remove_pointer_t<decltype(i)>>], this, &Plot::generate),
+        [checked](auto&&... args) {
+          if (checked) {
+            QObject::connect(args...);
+          } else {
+            QObject::disconnect(args...);
+          }
+        });
+    });
   }
 };
 }// namespace
