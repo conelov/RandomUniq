@@ -229,16 +229,17 @@ private slots:
 
 
   void sbRepeatCountLimitUpdate() {
-    switch (genInfo()->property(BOOST_PP_STRINGIZE(GenConstraint)).value<GenConstraint>()) {
-      case GenConstraint::Limited:
-        sb_repeatCount->setMaximum(sb_rangeMax->value() - sb_rangeMin->value() + 1);
-        break;
-      case GenConstraint::Unlimited:
-        sb_repeatCount->setMaximum(std::numeric_limits<int>::max());
-        break;
-      default:
-        assert(false);
-    }
+    sb_repeatCount->setMaximum(std::invoke([this] {
+      switch (genInfo()->property(BOOST_PP_STRINGIZE(GenConstraint)).value<GenConstraint>()) {
+        case GenConstraint::Limited:
+          return sb_rangeMax->value() - sb_rangeMin->value() + 1;
+        case GenConstraint::Unlimited:
+          return std::numeric_limits<int>::max();
+        default:
+          assert(false);
+          return int{};
+      }
+    }));
   }
 
 
