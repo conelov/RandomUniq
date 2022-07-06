@@ -14,24 +14,24 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   add_compile_options(-fconcepts)
 endif ()
 
-add_library(${PROJECT_NAME}_impl STATIC
+add_library(${PROJECT_NAME}_impl INTERFACE
   include/randomUniq/util/RandomDevice.hpp
   #  include/randomUniq/util/Range.hpp
 
   include/randomUniq/UniformIntDistributionUniq.hpp
   include/randomUniq/UniformIntDistribution.hpp
   )
-target_link_libraries(${PROJECT_NAME}_impl PUBLIC
+target_link_libraries(${PROJECT_NAME}_impl INTERFACE
   Microsoft.GSL::GSL
   range-v3::range-v3
   )
-target_include_directories(${PROJECT_NAME}_impl PUBLIC
+target_include_directories(${PROJECT_NAME}_impl INTERFACE
   include
   )
 set_target_properties(${PROJECT_NAME}_impl PROPERTIES
   LINKER_LANGUAGE CXX
   )
-target_compile_definitions(${PROJECT_NAME}_impl PUBLIC
+target_compile_definitions(${PROJECT_NAME}_impl INTERFACE
   PROJECT_NAME=${PROJECT_NAME}
   PROJECT_VERSION=${PROJECT_VERSION}
   ${PROJECT_NAME}_VERSION=${PROJECT_VERSION}
@@ -95,13 +95,15 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
   target_compile_definitions(qcustomplot PUBLIC
     QT_USE_QSTRINGBUILDER
     )
-  target_compile_options(qcustomplot PRIVATE
-    -Wno-deprecated-declarations
-    -Wno-deprecated-enum-enum-conversion
-    )
   set_target_properties(qcustomplot PROPERTIES
     AUTOMOC ON
     )
+  if (NOT CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(qcustomplot PRIVATE
+      -Wno-deprecated-declarations
+      -Wno-deprecated-enum-enum-conversion
+      )
+  endif ()
 
   add_executable(${PROJECT_NAME}_plot
     example/plot.cpp
@@ -133,6 +135,10 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     include(cmake/compress_7z_output_binary.cmake)
     compress_7z_output_binary(${PROJECT_NAME}_plot)
   endif ()
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    include(cmake/copy_dll_dependency.cmake)
+    copy_dll_dependency(${PROJECT_NAME}_plot)
+  endif()
 
   if (ENABLE_TESTING)
     add_executable(${PROJECT_NAME}_plot_impl_ut

@@ -245,7 +245,7 @@ private slots:
         hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
         hana::make_pair(hana::type_c<QComboBox>, qOverload<int>(&QComboBox::currentIndexChanged)));
       hana::unpack(hana::make_tuple(i, sigMap[hana::type_c<std::remove_pointer_t<decltype(i)>>], this, &Plot::generate),
-        [checked](auto&&... args) {
+        [this, checked](auto&&... args) {
           if (checked) {
             QObject::connect(args...);
           } else {

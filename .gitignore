@@ -8,3 +8,6 @@ bin
 lib
 .idea
 /3rdparty/qcustomplot
+/.vs
+/out
+/CMakeSettings.json
