@@ -2,6 +2,7 @@
 // Created by dym on 29.06.22.
 //
 
+#include "example/util/EventFilter.hpp"
 #include "example/util/generator.hpp"
 #include "ui_FormMain.h"
 #include <boost/bimap.hpp>
@@ -17,7 +18,9 @@
 #include <boost/hana/unpack.hpp>
 #include <boost/preprocessor/stringize.hpp>
 #include <QApplication>
+#include <QEvent>
 #include <QStyleFactory>
+#include <QWheelEvent>
 #include <range/v3/view/zip.hpp>
 #include <unordered_map>
 
@@ -51,7 +54,18 @@ class Plot final : public QMainWindow
 public:
   Plot() {
     setupUi(this);
-    setWindowTitle(BOOST_PP_STRINGIZE(PROJECT_NAME));
+    setWindowTitle(QString{BOOST_PP_STRINGIZE(PROJECT_NAME)} + "_v" + BOOST_PP_STRINGIZE(PROJECT_VERSION));
+
+    sa_viewOpt->verticalScrollBar()->setEnabled(false);
+    sa_viewOpt->installEventFilter(new util::EventFilter{
+      [hsb = sa_viewOpt->horizontalScrollBar()](QObject* obj, QEvent* event) {
+        if (auto const wheelEvent = dynamic_cast<QWheelEvent*>(event)) {
+          hsb->setValue(hsb->value() + wheelEvent->angleDelta().x() + wheelEvent->angleDelta().y());
+          return true;
+        }
+        return false;
+      },
+      sa_viewOpt});
 
     {
       QSignalBlocker const _{cb_genMethod};
@@ -106,8 +120,17 @@ public:
     }
     sbRepeatCountLimitUpdate();
 
-    on_cb_customXScale_toggled(cb_customXScale->isChecked());
-    on_cb_customYScale_toggled(cb_customYScale->isChecked());
+    for (auto const [cb, f] : {
+           std::make_pair(cb_customXRange, f_customXRange),
+           std::make_pair(cb_customYRange, f_customYRange),
+           std::make_pair(cb_customXScale, f_customXScale),
+           std::make_pair(cb_customYScale, f_customYScale)}) {
+      initBind(cb, &QCheckBox::toggled, cb->isChecked(), f, &QWidget::setVisible);
+    }
+
+    for (auto const w : {static_cast<QWidget*>(l_barsCount), static_cast<QWidget*>(sb_barsCount)}) {
+      initBind(rb_plotTypeBars, &QRadioButton::toggled, rb_plotTypeBars->isChecked(), w, &QWidget::setVisible);
+    }
 
     on_cb_autoRegen_toggled(cb_autoRegen->isChecked());
   }
@@ -123,9 +146,14 @@ private:
   int  genMethodIdxPrev = 0;
 
 private:
-  static void setVisibleWidget(bool visible, QWidget* w1, auto*... ws) {
-    w1->setVisible(visible);
-    (ws->setVisible(visible), ...);
+  static QMetaObject::Connection initBind(auto* sender, auto sig, auto&& initv, auto* receiver, auto&& slot) {
+    auto connect = QObject::connect(sender, sig, receiver, slot);
+    if constexpr (std::is_member_function_pointer_v<std::remove_cvref_t<decltype(slot)>>) {
+      std::invoke(std::forward<decltype(slot)>(slot), receiver, initv);
+    } else {
+      std::invoke(std::forward<decltype(slot)>(slot), initv);
+    }
+    return connect;
   }
 
 
@@ -213,16 +241,6 @@ private slots:
       default:
         assert(false);
     }
-  }
-
-
-  void on_cb_customXScale_toggled(bool checked) {
-    setVisibleWidget(checked, f_customXScale);
-  }
-
-
-  void on_cb_customYScale_toggled(bool checked) {
-    setVisibleWidget(checked, f_customYScale);
   }
 
 

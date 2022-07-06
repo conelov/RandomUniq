@@ -54,24 +54,29 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ${${PROJECT_NAME}_plot_REQUIRED_LI
 if (Qt${QT_VERSION_MAJOR}_FOUND)
   message(STATUS "Qt ${Qt${QT_VERSION_MAJOR}_VERSION} found")
 
+  set(${PROJECT_NAME}_plot_REQUIRED_LIBS_QUALIFIED)
+  foreach (lib ${${PROJECT_NAME}_plot_REQUIRED_LIBS})
+    list(APPEND ${PROJECT_NAME}_plot_REQUIRED_LIBS_QUALIFIED Qt${QT_VERSION_MAJOR}::${lib})
+  endforeach ()
+
   add_library(${PROJECT_NAME}_plot_impl STATIC
     example/util/rangeScaleView.hpp
     example/util/rangeIntegrate.hpp
     example/util/generator.hpp
+    example/util/EventFilter.hpp example/util/src/EventFilter.cpp
     #    example/util/SharedFromInstance.hpp
     example/util/RangeScaler.hpp example/util/src/RangeScaler.cpp
     )
   target_link_libraries(${PROJECT_NAME}_plot_impl PUBLIC
     range-v3::range-v3
+    ${${PROJECT_NAME}_plot_REQUIRED_LIBS_QUALIFIED}
     )
   target_include_directories(${PROJECT_NAME}_plot_impl PUBLIC
     ${PROJECT_SOURCE_DIR}
     )
-
-  set(${PROJECT_NAME}_plot_REQUIRED_LIBS_QUALIFIED)
-  foreach (lib ${${PROJECT_NAME}_plot_REQUIRED_LIBS})
-    list(APPEND ${PROJECT_NAME}_plot_REQUIRED_LIBS_QUALIFIED Qt${QT_VERSION_MAJOR}::${lib})
-  endforeach ()
+  set_target_properties(${PROJECT_NAME}_plot_impl PROPERTIES
+    AUTOMOC ON
+    )
 
   find_package(Boost REQUIRED)
 
