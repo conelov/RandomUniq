@@ -63,7 +63,7 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     example/util/rangeScaleView.hpp
     example/util/rangeIntegrate.hpp
     example/util/generator.hpp
-    example/util/EventFilter.hpp example/util/src/EventFilter.cpp
+    example/util/EventFilter.hpp
     #    example/util/SharedFromInstance.hpp
     example/util/RangeScaler.hpp example/util/src/RangeScaler.cpp
     )

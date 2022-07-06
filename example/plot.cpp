@@ -59,8 +59,9 @@ public:
     sa_viewOpt->verticalScrollBar()->setEnabled(false);
     sa_viewOpt->installEventFilter(new util::EventFilter{
       [hsb = sa_viewOpt->horizontalScrollBar()](QObject* obj, QEvent* event) {
-        if (auto const wheelEvent = dynamic_cast<QWheelEvent*>(event)) {
-          hsb->setValue(hsb->value() + wheelEvent->angleDelta().x() + wheelEvent->angleDelta().y());
+        if (event->type() == QEvent::Wheel) {
+          auto const wheelEvent = static_cast<QWheelEvent*>(event);
+          hsb->setValue(hsb->value() - wheelEvent->angleDelta().x() + wheelEvent->angleDelta().y());
           return true;
         }
         return false;
@@ -121,15 +122,12 @@ public:
     sbRepeatCountLimitUpdate();
 
     for (auto const [cb, f] : {
+           std::make_pair(cb_customXPointCount, f_customXPointCount),
            std::make_pair(cb_customXRange, f_customXRange),
            std::make_pair(cb_customYRange, f_customYRange),
            std::make_pair(cb_customXScale, f_customXScale),
            std::make_pair(cb_customYScale, f_customYScale)}) {
       initBind(cb, &QCheckBox::toggled, cb->isChecked(), f, &QWidget::setVisible);
-    }
-
-    for (auto const w : {static_cast<QWidget*>(l_barsCount), static_cast<QWidget*>(sb_barsCount)}) {
-      initBind(rb_plotTypeBars, &QRadioButton::toggled, rb_plotTypeBars->isChecked(), w, &QWidget::setVisible);
     }
 
     on_cb_autoRegen_toggled(cb_autoRegen->isChecked());
@@ -263,11 +261,11 @@ private slots:
         hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
         hana::make_pair(hana::type_c<QComboBox>, qOverload<int>(&QComboBox::currentIndexChanged)));
       hana::unpack(hana::make_tuple(i, sigMap[hana::type_c<std::remove_pointer_t<decltype(i)>>], this, &Plot::generate),
-        [this, checked](auto&&... args) {
+        [checked](auto&&... args) {
           if (checked) {
-            QObject::connect(args...);
+            ::QObject::connect(args...);
           } else {
-            QObject::disconnect(args...);
+            ::QObject::disconnect(args...);
           }
         });
     });

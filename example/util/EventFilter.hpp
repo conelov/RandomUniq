@@ -15,13 +15,11 @@ class EventFilter final : public QObject {
   Q_OBJECT
 public:
   using Handler = std::function<bool(QObject*, QEvent*)>;
-  Handler const handler;
-
 
 public:
-  ~EventFilter() override;
+  Handler const handler;
 
-
+public:
   template<typename H>
   EventFilter(H&& hin, QObject* parent = nullptr)
       : QObject{parent}
@@ -30,6 +28,8 @@ public:
   }
 
 
-  bool eventFilter(QObject* watched, QEvent* event) override;
+  bool eventFilter(QObject* watched, QEvent* event) override {
+    return std::invoke(handler, watched, event);
+  }
 };
 }// namespace util
