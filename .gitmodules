@@ -10,3 +10,6 @@
 [submodule "3rdparty/gtest"]
 	path = 3rdparty/gtest
 	url = https://github.com/google/googletest.git
+[submodule "cmake"]
+	path = cmake
+	url = git@github.com:conelov/cmakeUtils.git
