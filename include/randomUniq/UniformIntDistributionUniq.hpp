@@ -15,12 +15,13 @@ enum class UniformIntDistributionUniqGenType : std::uint8_t {
 };
 
 
-template<typename T_, UniformIntDistributionUniqGenType GenType_ = UniformIntDistributionUniqGenType::LinearDoobleGen>
+template<typename T_, UniformIntDistributionUniqGenType GenType_ = UniformIntDistributionUniqGenType::LinearDoobleGen, typename RgGen_ = std::mt19937>
 class UniformIntDistributionUniq final {
   static_assert(std::is_integral_v<T_>);
 
 public:
   using value_type              = T_;
+  using RgGen = RgGen_;
   static constexpr auto GenType = GenType_;
 
 public:
@@ -34,7 +35,7 @@ public:
   }
 
 
-  value_type get(auto& rd = util::RandomDevice<std::mt19937>::get()) {
+  value_type get(auto& rd = util::RandomDevice<RgGen>::get()) {
     if (!totalCounter_) {
       throw std::runtime_error("no contained number");
     }
@@ -42,7 +43,7 @@ public:
     const auto itRange = [&, this] {
       if constexpr (GenType == UniformIntDistributionUniqGenType::LinearDoobleGen) {
         double       res    = 0;
-        const double random = std::uniform_real_distribution<double>(0, 1)(util::RandomDevice<std::mt19937>::get());
+        const double random = std::uniform_real_distribution<double>(0, 1)(util::RandomDevice<RgGen>::get());
         for (auto it = ranges_.begin(); it != ranges_.end(); ++it) {
           res += it->chance(totalCounter_);
           if (res >= random) {
@@ -80,7 +81,7 @@ public:
 
 
   value_type get() {
-    return get(util::RandomDevice<std::mt19937>::get());
+    return get(util::RandomDevice<RgGen>::get());
   }
 
 
