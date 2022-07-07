@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "example/util/RangeScaler.hpp"
+#include "plot/util/RangeScaler.hpp"
 #include <range/v3/numeric/accumulate.hpp>
 #include <range/v3/range/operations.hpp>
 #include <range/v3/view/chunk_by.hpp>

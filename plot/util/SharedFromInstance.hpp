@@ -8,7 +8,7 @@
 #include <type_traits>
 
 
-namespace util {
+namespace urand::plot::util {
 
 template<auto creator_, auto deleter_ = std::default_delete<std::invoke_result_t<decltype(creator_)>>{}>
 class SharedFromInstance final {
@@ -89,4 +89,4 @@ public:
 private:
   std::weak_ptr<value_type> valueWeak_;
 };
-}// namespace util
+}// namespace urand::plot::util

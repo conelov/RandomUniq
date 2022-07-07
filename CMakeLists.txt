@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(RandomUniq VERSION 0.2 LANGUAGES CXX)
+project(RandomUniq VERSION 0.3 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 
 set(ENABLE_TESTING CACHE ON BOOL "")
@@ -60,15 +60,16 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
   endforeach ()
 
   add_library(${PROJECT_NAME}_plot_impl STATIC
-    example/util/rangeScaleView.hpp
-    example/util/rangeIntegrate.hpp
-    example/util/generator.hpp
-    example/util/EventFilter.hpp
-    #    example/util/SharedFromInstance.hpp
-    example/util/RangeScaler.hpp example/util/src/RangeScaler.cpp
+    plot/util/rangeScaleView.hpp
+    plot/util/generator.hpp
+    plot/util/EventFilter.hpp
+    #    plot/util/SharedFromInstance.hpp
+    plot/util/RangeScaler.hpp plot/util/src/RangeScaler.cpp
+    plot/util/ButtonGroup.hpp plot/util/src/ButtonGroup.cpp
     )
   target_link_libraries(${PROJECT_NAME}_plot_impl PUBLIC
     range-v3::range-v3
+    Microsoft.GSL::GSL
     ${${PROJECT_NAME}_plot_REQUIRED_LIBS_QUALIFIED}
     )
   target_include_directories(${PROJECT_NAME}_plot_impl PUBLIC
@@ -111,7 +112,7 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
   endif ()
 
   add_executable(${PROJECT_NAME}_plot
-    example/plot.cpp
+    plot/plot.cpp
     )
   target_link_libraries(${PROJECT_NAME}_plot PRIVATE
     qcustomplot
@@ -128,7 +129,7 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
   set_target_properties(${PROJECT_NAME}_plot PROPERTIES
     AUTOMOC ON
     AUTOUIC ON
-    AUTOUIC_SEARCH_PATHS example
+    AUTOUIC_SEARCH_PATHS plot
     INCLUDE_CURRENT_DIR ON
     $<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:INTERPROCEDURAL_OPTIMIZATION ON>
     OUTPUT_NAME ${PROJECT_NAME}_v${PROJECT_VERSION}
@@ -143,11 +144,11 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
   if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     include(cmake/copy_dll_dependency.cmake)
     copy_dll_dependency(${PROJECT_NAME}_plot)
-  endif()
+  endif ()
 
   if (ENABLE_TESTING)
     add_executable(${PROJECT_NAME}_plot_impl_ut
-      example/util/ut/ut.cpp
+      plot/util/ut/ut.cpp
       )
     target_link_libraries(${PROJECT_NAME}_plot_impl_ut PUBLIC
       GTest::gtest_main

@@ -2,8 +2,9 @@
 // Created by dym on 29.06.22.
 //
 
-#include "example/util/EventFilter.hpp"
-#include "example/util/generator.hpp"
+#include "plot/util/ButtonGroup.hpp"
+#include "plot/util/EventFilter.hpp"
+#include "plot/util/generator.hpp"
 #include "ui_FormMain.h"
 #include <boost/bimap.hpp>
 #include <boost/bimap/multiset_of.hpp>
@@ -50,6 +51,9 @@ Q_DECLARE_METATYPE(GenMem)
 
 
 namespace {
+
+namespace util = urand::plot::util;
+
 
 template<typename T>
 QByteArray typeStr() {
@@ -108,26 +112,6 @@ void setRange(QCPAxis& axis, auto min, auto max) {
 }
 
 
-class ButtonGroup final : public QButtonGroup {
-  Q_OBJECT
-public:
-  ButtonGroup(gsl::not_null<QObject*> parent)
-      : QButtonGroup{parent} {
-    ::QObject::connect(this, qOverload<QAbstractButton*, bool>(&QButtonGroup::buttonToggled), this, &ButtonGroup::onButtonToggled);
-  }
-
-signals:
-  void buttonToggledTrue(QAbstractButton*);
-
-private slots:
-  void onButtonToggled(QAbstractButton* btn, bool checked) {
-    if (checked) {
-      emit buttonToggledTrue(btn);
-    }
-  };
-};
-
-
 class Plot final : public QMainWindow
     , private Ui::FormMain {
   Q_OBJECT
@@ -152,22 +136,22 @@ public:
       hana::make_tuple(
         hana::make_tuple(
           "linear x3",
-          [](auto... args) { return urand::plot::util::uniformIntDistributionLinearMid<3>(args...); },
+          [](auto... args) { return util::uniformIntDistributionLinearMid<3>(args...); },
           GenConstraint::Unlimited,
           GenMem{0, 1'000, 10'000}),
         hana::make_tuple(
           "linear",
-          [](auto... args) { return urand::plot::util::uniformIntDistributionLinearMid<1>(args...); },
+          [](auto... args) { return util::uniformIntDistributionLinearMid<1>(args...); },
           GenConstraint::Unlimited,
           GenMem{0, 1'000, 10'000}),
         hana::make_tuple(
           "UniformIntDistributionUniq LinearDoobleGen",
-          [](auto... args) { return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(args...); },
+          [](auto... args) { return util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(args...); },
           GenConstraint::Limited,
           GenMem{0, 100, 50}),
         hana::make_tuple(
           "UniformIntDistributionUniq NonLinearEqualChanceRange",
-          [](auto... args) { return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(args...); },
+          [](auto... args) { return util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(args...); },
           GenConstraint::Limited,
           GenMem{0, 100, 50})),
       [this](auto&& i) {
@@ -223,9 +207,9 @@ private:
     boost::bimaps::vector_of_relation>;
 
 private:
-  Data               data_;
-  ButtonGroup* const plotTypeButtonGroup_ = (setupUi(this), new ButtonGroup{gb_plotType});
-  int                genMethodIdxPrev     = 0;
+  Data                     data_;
+  util::ButtonGroup* const plotTypeButtonGroup_ = (setupUi(this), new util::ButtonGroup{gb_plotType});
+  int                      genMethodIdxPrev     = 0;
 
 private:
   QObject* genInfo(int idx) {
@@ -339,7 +323,7 @@ private slots:
       hana::make_map(
         hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
         hana::make_pair(hana::type_c<QDoubleSpinBox>, qOverload<double>(&QDoubleSpinBox::valueChanged)),
-        hana::make_pair(hana::type_c<ButtonGroup>, &ButtonGroup::buttonToggledTrue)),
+        hana::make_pair(hana::type_c<util::ButtonGroup>, &util::ButtonGroup::buttonToggledTrue)),
       this, &Plot::replot);
   }
 };

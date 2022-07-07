@@ -9,7 +9,7 @@
 #include <QObject>
 
 
-namespace util {
+namespace urand::plot::util {
 
 class EventFilter final : public QObject {
   Q_OBJECT
@@ -32,4 +32,4 @@ public:
     return std::invoke(handler, watched, event);
   }
 };
-}// namespace util
+}// namespace urand::plot::util

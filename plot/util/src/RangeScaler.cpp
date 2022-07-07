@@ -2,7 +2,7 @@
 // Created by dym on 01.07.22.
 //
 
-#include "example/util/RangeScaler.hpp"
+#include "plot/util/RangeScaler.hpp"
 #include <cassert>
 
 

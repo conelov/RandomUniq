@@ -2,8 +2,8 @@
 // Created by dym on 01.07.22.
 //
 
-#include "example/util/generator.hpp"
-#include "example/util/rangeScaleView.hpp"
+#include "plot/util/generator.hpp"
+#include "plot/util/rangeScaleView.hpp"
 #include <gtest/gtest.h>
 #include <range/v3/algorithm/equal.hpp>
 #include <range/v3/algorithm/sort.hpp>
