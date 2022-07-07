@@ -27,7 +27,8 @@
 
 namespace {
 
-using GenCtor = std::function<std::function<std::size_t()>()>;
+using GenCtor  = std::function<std::function<std::size_t()>()>;
+using PlotCtor = std::function<std::function<void(double, double)>()>;
 
 
 enum class GenConstraint : std::uint8_t {
@@ -42,18 +43,24 @@ struct GenMem final {
 }// namespace
 
 Q_DECLARE_METATYPE(GenCtor)
+Q_DECLARE_METATYPE(PlotCtor)
 Q_DECLARE_METATYPE(GenConstraint)
 Q_DECLARE_METATYPE(GenMem)
 
 
 namespace {
 
+template<typename T>
+auto typeStr() {
+  return QMetaType{qMetaTypeId<T>()}.name();
+}
+
+
 class Plot final : public QMainWindow
     , private Ui::FormMain {
   Q_OBJECT
 public:
   Plot() {
-    setupUi(this);
     setWindowTitle(QString{BOOST_PP_STRINGIZE(PROJECT_NAME)} + "_v" + BOOST_PP_STRINGIZE(PROJECT_VERSION));
 
     sa_viewOpt->verticalScrollBar()->setEnabled(false);
@@ -68,39 +75,27 @@ public:
       },
       sa_viewOpt});
 
-    {
-      QSignalBlocker const _{cb_genMethod};
-      cb_genMethod->clear();
-    }
     namespace hana = boost::hana;
     hana::for_each(
       hana::make_tuple(
         hana::make_tuple(
           "linear x3",
-          [](auto l, auto r) {
-            return urand::plot::util::uniformIntDistributionLinearMid<3>(l, r);
-          },
+          [](auto... args) { return urand::plot::util::uniformIntDistributionLinearMid<3>(args...); },
           GenConstraint::Unlimited,
           GenMem{0, 1'000, 10'000}),
         hana::make_tuple(
           "linear",
-          [](auto l, auto r) {
-            return urand::plot::util::uniformIntDistributionLinearMid<1>(l, r);
-          },
+          [](auto... args) { return urand::plot::util::uniformIntDistributionLinearMid<1>(args...); },
           GenConstraint::Unlimited,
           GenMem{0, 1'000, 10'000}),
         hana::make_tuple(
           "UniformIntDistributionUniq LinearDoobleGen",
-          [](auto l, auto r) {
-            return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(l, r);
-          },
+          [](auto... args) { return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(args...); },
           GenConstraint::Limited,
           GenMem{0, 100, 50}),
         hana::make_tuple(
           "UniformIntDistributionUniq NonLinearEqualChanceRange",
-          [](auto l, auto r) {
-            return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(l, r);
-          },
+          [](auto... args) { return urand::plot::util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(args...); },
           GenConstraint::Limited,
           GenMem{0, 100, 50})),
       [this](auto&& i) {
@@ -131,6 +126,20 @@ public:
     }
 
     on_cb_autoRegen_toggled(cb_autoRegen->isChecked());
+
+    hana::for_each(
+      hana::make_tuple(
+        hana::make_tuple("Graph", [this] { return [p = qcp_plot->addGraph()](auto... args) { p->addData(args...); }; }),
+        hana::make_tuple("Gusto", [this] { return [p = new QCPBars{qcp_plot->xAxis, qcp_plot->yAxis}](auto... args) { p->addData(args...); }; })),
+      [this](auto&& tuple) {
+        hana::unpack(std::forward<decltype(tuple)>(tuple), [this](auto&& text, auto&& printer) {
+          auto const btn = new QRadioButton{std::forward<decltype(text)>(text)};
+          btn->setProperty(typeStr<PlotCtor>(), QVariant::fromValue(PlotCtor{std::forward<decltype(printer)>(printer)}));
+          gb_plotType->layout()->addWidget(btn);
+          plotTypeButtonGroup_->addButton(btn);
+        });
+      });
+    plotTypeButtonGroup_->button(-2)->setChecked(true);
   }
 
 private:
@@ -140,8 +149,9 @@ private:
     boost::bimaps::vector_of_relation>;
 
 private:
-  Data data_;
-  int  genMethodIdxPrev = 0;
+  Data                data_;
+  QButtonGroup* const plotTypeButtonGroup_ = (setupUi(this), new QButtonGroup{gb_plotType});
+  int                 genMethodIdxPrev     = 0;
 
 private:
   static QMetaObject::Connection initBind(auto* sender, auto sig, auto&& initv, auto* receiver, auto&& slot) {

@@ -79,7 +79,7 @@
      <item>
       <widget class="QTabWidget" name="tabWidget">
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="tab_generateOpt">
         <attribute name="title">
@@ -112,28 +112,7 @@
             </widget>
            </item>
            <item row="0" column="1" colspan="5">
-            <widget class="QComboBox" name="cb_genMethod">
-             <item>
-              <property name="text">
-               <string>UniformIntDistributionUniq LinearDoobleGen</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>UniformIntDistributionUniq NonLinearEqualChanceRange</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>linear</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>linear x3</string>
-              </property>
-             </item>
-            </widget>
+            <widget class="QComboBox" name="cb_genMethod"/>
            </item>
            <item row="1" column="0">
             <widget class="QLabel" name="l_repeatCount">
@@ -308,7 +287,7 @@
               <number>3</number>
              </property>
              <item>
-              <widget class="QGroupBox" name="groupBox">
+              <widget class="QGroupBox" name="gb_plotType">
                <property name="sizePolicy">
                 <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
                  <horstretch>0</horstretch>
@@ -334,26 +313,6 @@
                 <property name="bottomMargin">
                  <number>3</number>
                 </property>
-                <item>
-                 <widget class="QRadioButton" name="rb_plotTypeGraph">
-                  <property name="text">
-                   <string>Graph</string>
-                  </property>
-                  <property name="checked">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QRadioButton" name="rb_plotTypeBars">
-                  <property name="text">
-                   <string>Bars</string>
-                  </property>
-                  <property name="checked">
-                   <bool>false</bool>
-                  </property>
-                 </widget>
-                </item>
                </layout>
               </widget>
              </item>
