@@ -17,6 +17,7 @@
 #include <boost/hana/type.hpp>
 #include <boost/hana/unpack.hpp>
 #include <boost/preprocessor/stringize.hpp>
+#include <gsl/pointers>
 #include <QApplication>
 #include <QEvent>
 #include <QStyleFactory>
@@ -49,10 +50,41 @@ Q_DECLARE_METATYPE(GenMem)
 
 
 namespace {
+namespace _ {
 
 template<typename T>
-auto typeStr() {
+QByteArray typeStr() {
   return QMetaType{qMetaTypeId<T>()}.name();
+}
+
+
+template<typename T>
+T property(gsl::not_null<QObject*> obj) {
+  return obj->property(typeStr<T>()).template value<T>();
+}
+
+
+void setProperty(gsl::not_null<QObject*> obj, auto&&... args) {
+  static_assert(sizeof...(args));
+  (obj->setProperty(typeStr<std::remove_cvref_t<decltype(args)>>(), QVariant::fromValue(std::forward<decltype(args)>(args))), ...);
+}
+}// namespace _
+
+
+QMetaObject::Connection initBind(auto* sender, auto sig, auto&& initv, auto* receiver, auto&& slot) {
+  auto connect = QObject::connect(sender, sig, receiver, slot);
+  if constexpr (std::is_member_function_pointer_v<std::remove_cvref_t<decltype(slot)>>) {
+    std::invoke(std::forward<decltype(slot)>(slot), receiver, initv);
+  } else {
+    std::invoke(std::forward<decltype(slot)>(slot), initv);
+  }
+  return connect;
+}
+
+
+void setRange(QCPAxis& axis, auto min, auto max) {
+  assert(max >= min);
+  axis.setRange(min - min * .01, max + max * .01);
 }
 
 
@@ -101,11 +133,10 @@ public:
       [this](auto&& i) {
         hana::unpack(std::forward<decltype(i)>(i), [this](auto&& name, auto&& gen, GenConstraint constraint, GenMem mem) {
           auto const obj = new QObject{this};
-          obj->setProperty("gen", QVariant::fromValue(GenCtor{[this, gen] {
-            return std::invoke(gen, sb_rangeMin->value(), sb_rangeMax->value());
-          }}));
-          obj->setProperty(BOOST_PP_STRINGIZE(GenConstraint), QVariant::fromValue(constraint));
-          obj->setProperty(BOOST_PP_STRINGIZE(GenMem), QVariant::fromValue(mem));
+          _::setProperty(obj,
+            GenCtor{[this, gen] { return std::invoke(gen, sb_rangeMin->value(), sb_rangeMax->value()); }},
+            constraint,
+            mem);
           cb_genMethod->addItem(std::forward<decltype(name)>(name), QVariant::fromValue(obj));
         });
       });
@@ -114,7 +145,6 @@ public:
       QObject::connect(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRangeChanged);
       QObject::connect(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRepeatCountLimitUpdate);
     }
-    sbRepeatCountLimitUpdate();
 
     for (auto const [cb, f] : {
            std::make_pair(cb_customXPointCount, f_customXPointCount),
@@ -125,8 +155,6 @@ public:
       initBind(cb, &QCheckBox::toggled, cb->isChecked(), f, &QWidget::setVisible);
     }
 
-    on_cb_autoRegen_toggled(cb_autoRegen->isChecked());
-
     hana::for_each(
       hana::make_tuple(
         hana::make_tuple("Graph", [this] { return [p = qcp_plot->addGraph()](auto... args) { p->addData(args...); }; }),
@@ -134,12 +162,15 @@ public:
       [this](auto&& tuple) {
         hana::unpack(std::forward<decltype(tuple)>(tuple), [this](auto&& text, auto&& printer) {
           auto const btn = new QRadioButton{std::forward<decltype(text)>(text)};
-          btn->setProperty(typeStr<PlotCtor>(), QVariant::fromValue(PlotCtor{std::forward<decltype(printer)>(printer)}));
+          _::setProperty(btn, PlotCtor{std::forward<decltype(printer)>(printer)});
           gb_plotType->layout()->addWidget(btn);
           plotTypeButtonGroup_->addButton(btn);
         });
       });
     plotTypeButtonGroup_->button(-2)->setChecked(true);
+
+    sbRepeatCountLimitUpdate();
+    on_cb_autoRegen_toggled(cb_autoRegen->isChecked());
   }
 
 private:
@@ -154,29 +185,12 @@ private:
   int                 genMethodIdxPrev     = 0;
 
 private:
-  static QMetaObject::Connection initBind(auto* sender, auto sig, auto&& initv, auto* receiver, auto&& slot) {
-    auto connect = QObject::connect(sender, sig, receiver, slot);
-    if constexpr (std::is_member_function_pointer_v<std::remove_cvref_t<decltype(slot)>>) {
-      std::invoke(std::forward<decltype(slot)>(slot), receiver, initv);
-    } else {
-      std::invoke(std::forward<decltype(slot)>(slot), initv);
-    }
-    return connect;
-  }
-
-
-  static void setRange(QCPAxis& axis, auto min, auto max) {
-    assert(max >= min);
-    axis.setRange(min - min * .01, max + max * .01);
-  }
-
-private:
   void replot() {
-    qcp_plot->clearGraphs();
-    const auto graph = qcp_plot->addGraph();
+    qcp_plot->clearPlottables();
+    const auto graph = std::invoke(_::property<PlotCtor>(plotTypeButtonGroup_->checkedButton()));
 
     for (auto const [key, value] : data_) {
-      graph->addData(key, value);
+      std::invoke(graph, key, value);
     }
     setRange(*qcp_plot->xAxis, data_.left.begin()->first, std::prev(data_.left.end())->first);
     setRange(*qcp_plot->yAxis, 0u, std::prev(data_.right.end())->first);
@@ -216,7 +230,7 @@ private slots:
     data_.clear();
     {
       std::unordered_map<std::size_t, std::size_t> mapTmp;
-      auto                                         gen = genInfo()->property("gen").value<GenCtor>()();
+      auto                                         gen = std::invoke(_::property<GenCtor>(genInfo()));
       for ([[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
         ++mapTmp[gen()];
       }
@@ -230,7 +244,7 @@ private slots:
 
   void sbRangeChanged() {
     QSignalBlocker const _1{sb_rangeMin}, _2{sb_rangeMax};
-    if (sender()->objectName() == BOOST_PP_STRINGIZE(sp_customXScale_max)) {
+    if (sender() == sp_customXScale_max) {
       sb_rangeMin->setMaximum(sb_rangeMax->value());
     } else {
       sb_rangeMax->setMinimum(sb_rangeMin->value());
@@ -240,7 +254,7 @@ private slots:
 
   void sbRepeatCountLimitUpdate() {
     sb_repeatCount->setMaximum(std::invoke([this] {
-      switch (genInfo()->property(BOOST_PP_STRINGIZE(GenConstraint)).value<GenConstraint>()) {
+      switch (_::property<GenConstraint>(genInfo())) {
         case GenConstraint::Limited:
           return sb_rangeMax->value() - sb_rangeMin->value() + 1;
         case GenConstraint::Unlimited:
@@ -259,8 +273,8 @@ private slots:
 
 
   void on_cb_genMethod_currentIndexChanged(int idx) {
-    genInfo(genMethodIdxPrev)->setProperty(BOOST_PP_STRINGIZE(GenMem), QVariant::fromValue(genMemFromUi()));
-    setUiFromGenMem(genInfo(idx)->property(BOOST_PP_STRINGIZE(GenMem)).value<GenMem>());
+    _::setProperty(genInfo(genMethodIdxPrev), genMemFromUi());
+    setUiFromGenMem(_::property<GenMem>(genInfo(idx)));
     genMethodIdxPrev = idx;
   }
 
