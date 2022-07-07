@@ -9,7 +9,6 @@
 #include <boost/bimap/multiset_of.hpp>
 #include <boost/bimap/set_of.hpp>
 #include <boost/bimap/vector_of.hpp>
-#include <boost/container/static_vector.hpp>
 #include <boost/hana/at_key.hpp>
 #include <boost/hana/for_each.hpp>
 #include <boost/hana/map.hpp>
@@ -51,13 +50,14 @@ Q_DECLARE_METATYPE(GenMem)
 
 
 namespace {
-namespace _ {
 
 template<typename T>
 QByteArray typeStr() {
   return QMetaType{qMetaTypeId<T>()}.name();
 }
 
+
+namespace _ {
 
 template<typename T>
 T property(gsl::not_null<QObject*> obj) {
@@ -83,10 +83,49 @@ QMetaObject::Connection initBind(auto* sender, auto sig, auto* receiver, auto&& 
 }
 
 
+void connectToggled(bool connect, auto&& emitters, auto&& sigMap, auto* receiver, auto slot) {
+  static_assert(std::is_member_function_pointer_v<std::remove_cvref_t<decltype(slot)>>);
+  assert(receiver);
+  namespace hana = boost::hana;
+  hana::for_each(emitters, [=](auto* emitter) {
+    assert(emitter);
+    hana::unpack(
+      hana::make_tuple(emitter, sigMap[hana::type_c<std::remove_pointer_t<decltype(emitter)>>], receiver, slot),
+      [=](auto... args) {
+        if (connect) {
+          ::QObject::connect(args...);
+        } else {
+          ::QObject::disconnect(args...);
+        }
+      });
+  });
+}
+
+
 void setRange(QCPAxis& axis, auto min, auto max) {
   assert(max >= min);
   axis.setRange(min - min * .01, max + max * .01);
 }
+
+
+class ButtonGroup final : public QButtonGroup {
+  Q_OBJECT
+public:
+  ButtonGroup(gsl::not_null<QObject*> parent)
+      : QButtonGroup{parent} {
+    ::QObject::connect(this, qOverload<QAbstractButton*, bool>(&QButtonGroup::buttonToggled), this, &ButtonGroup::onButtonToggled);
+  }
+
+signals:
+  void buttonToggledTrue(QAbstractButton*);
+
+private slots:
+  void onButtonToggled(QAbstractButton* btn, bool checked) {
+    if (checked) {
+      emit buttonToggledTrue(btn);
+    }
+  };
+};
 
 
 class Plot final : public QMainWindow
@@ -184,10 +223,9 @@ private:
     boost::bimaps::vector_of_relation>;
 
 private:
-  Data                                                         data_;
-  boost::container::static_vector<QMetaObject::Connection, 10> cb_autoReplot_connections_;
-  QButtonGroup* const                                          plotTypeButtonGroup_ = (setupUi(this), new QButtonGroup{gb_plotType});
-  int                                                          genMethodIdxPrev     = 0;
+  Data               data_;
+  ButtonGroup* const plotTypeButtonGroup_ = (setupUi(this), new ButtonGroup{gb_plotType});
+  int                genMethodIdxPrev     = 0;
 
 private:
   QObject* genInfo(int idx) {
@@ -232,6 +270,10 @@ private slots:
 
 
   void replot() {
+    if (data_.empty()) {
+      return;
+    }
+
     qcp_plot->clearPlottables();
     for (const auto graph = std::invoke(_::property<PlotCtor>(plotTypeButtonGroup_->checkedButton()));
          auto const [key, value] : data_) {
@@ -266,19 +308,12 @@ private slots:
 
   void on_cb_autoRegen_toggled(bool checked) {
     namespace hana = boost::hana;
-    hana::for_each(hana::make_tuple(sb_rangeMin, sb_rangeMax, sb_repeatCount, cb_genMethod), [this, checked](auto i) {
-      constexpr auto sigMap = hana::make_map(
+    connectToggled(checked,
+      hana::make_tuple(sb_rangeMin, sb_rangeMax, sb_repeatCount, cb_genMethod),
+      hana::make_map(
         hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
-        hana::make_pair(hana::type_c<QComboBox>, qOverload<int>(&QComboBox::currentIndexChanged)));
-      hana::unpack(hana::make_tuple(i, sigMap[hana::type_c<std::remove_pointer_t<decltype(i)>>], this, &Plot::generate),
-        [checked](auto... args) {
-          if (checked) {
-            ::QObject::connect(args...);
-          } else {
-            ::QObject::disconnect(args...);
-          }
-        });
-    });
+        hana::make_pair(hana::type_c<QComboBox>, qOverload<int>(&QComboBox::currentIndexChanged))),
+      this, &Plot::generate);
   }
 
 
@@ -295,34 +330,17 @@ private slots:
 
 
   void on_cb_autoReplot_toggled(bool checked) {
-    if (checked) {
-      namespace hana = boost::hana;
-      hana::for_each(
-        hana::make_tuple(sb_customXPointCount,
-          dsb_customXRange_min, dsb_customXRange_max, dsb_customYRange_min, dsb_customYRange_max,
-          dsb_customXScale_min, dsb_customXScale_max, dsb_customYScale_min, dsb_customYScale_max,
-          plotTypeButtonGroup_),
-        [this](auto i) {
-          constexpr auto sigMap = hana::make_map(
-            hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
-            hana::make_pair(hana::type_c<QDoubleSpinBox>, qOverload<double>(&QDoubleSpinBox::valueChanged)),
-            hana::make_pair(hana::type_c<QButtonGroup>, qOverload<QAbstractButton*, bool>(&QButtonGroup::buttonToggled)));
-          hana::unpack(hana::make_tuple(i, sigMap[hana::type_c<std::remove_pointer_t<decltype(i)>>], this, [this](auto... args) {
-            if constexpr (sizeof...(args) > 1) {
-              if (!std::get<1>(std::make_tuple(args...))) {
-                return;
-              }
-            }
-            this->generate();
-          }),
-            [this](auto... args) { cb_autoReplot_connections_.push_back(::QObject::connect(args...)); });
-        });
-    } else {
-      for (auto const connect : cb_autoReplot_connections_) {
-        ::QObject::disconnect(connect);
-      }
-      cb_autoReplot_connections_.clear();
-    }
+    namespace hana = boost::hana;
+    connectToggled(checked,
+      hana::make_tuple(sb_customXPointCount,
+        dsb_customXRange_min, dsb_customXRange_max, dsb_customYRange_min, dsb_customYRange_max,
+        dsb_customXScale_min, dsb_customXScale_max, dsb_customYScale_min, dsb_customYScale_max,
+        plotTypeButtonGroup_),
+      hana::make_map(
+        hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
+        hana::make_pair(hana::type_c<QDoubleSpinBox>, qOverload<double>(&QDoubleSpinBox::valueChanged)),
+        hana::make_pair(hana::type_c<ButtonGroup>, &ButtonGroup::buttonToggledTrue)),
+      this, &Plot::replot);
   }
 };
 }// namespace
