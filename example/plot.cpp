@@ -9,6 +9,7 @@
 #include <boost/bimap/multiset_of.hpp>
 #include <boost/bimap/set_of.hpp>
 #include <boost/bimap/vector_of.hpp>
+#include <boost/container/static_vector.hpp>
 #include <boost/hana/at_key.hpp>
 #include <boost/hana/for_each.hpp>
 #include <boost/hana/map.hpp>
@@ -71,12 +72,12 @@ void setProperty(gsl::not_null<QObject*> obj, auto&&... args) {
 }// namespace _
 
 
-QMetaObject::Connection initBind(auto* sender, auto sig, auto&& initv, auto* receiver, auto&& slot) {
+QMetaObject::Connection initBind(auto* sender, auto sig, auto* receiver, auto&& slot, auto&&... initv) {
   auto connect = QObject::connect(sender, sig, receiver, slot);
   if constexpr (std::is_member_function_pointer_v<std::remove_cvref_t<decltype(slot)>>) {
-    std::invoke(std::forward<decltype(slot)>(slot), receiver, initv);
+    std::invoke(std::forward<decltype(slot)>(slot), receiver, std::forward<decltype(initv)>(initv)...);
   } else {
-    std::invoke(std::forward<decltype(slot)>(slot), initv);
+    std::invoke(std::forward<decltype(slot)>(slot), std::forward<decltype(initv)>(initv)...);
   }
   return connect;
 }
@@ -142,8 +143,7 @@ public:
       });
 
     for (auto const sb : {sb_rangeMin, sb_rangeMax}) {
-      QObject::connect(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRangeChanged);
-      QObject::connect(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRepeatCountLimitUpdate);
+      initBind(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRepeatCountLimitUpdate);
     }
 
     for (auto const [cb, f] : {
@@ -152,7 +152,7 @@ public:
            std::make_pair(cb_customYRange, f_customYRange),
            std::make_pair(cb_customXScale, f_customXScale),
            std::make_pair(cb_customYScale, f_customYScale)}) {
-      initBind(cb, &QCheckBox::toggled, cb->isChecked(), f, &QWidget::setVisible);
+      initBind(cb, &QCheckBox::toggled, f, &QWidget::setVisible, cb->isChecked());
     }
 
     hana::for_each(
@@ -169,8 +169,12 @@ public:
       });
     plotTypeButtonGroup_->button(-2)->setChecked(true);
 
+    initBind(
+      cb_autoReplot, &QCheckBox::toggled, f_replot, [f = f_replot](bool checked) { f->setVisible(!checked); }, cb_autoReplot->isChecked());
+
     sbRepeatCountLimitUpdate();
     on_cb_autoRegen_toggled(cb_autoRegen->isChecked());
+    on_cb_autoReplot_toggled(cb_autoReplot->isChecked());
   }
 
 private:
@@ -180,25 +184,12 @@ private:
     boost::bimaps::vector_of_relation>;
 
 private:
-  Data                data_;
-  QButtonGroup* const plotTypeButtonGroup_ = (setupUi(this), new QButtonGroup{gb_plotType});
-  int                 genMethodIdxPrev     = 0;
+  Data                                                         data_;
+  boost::container::static_vector<QMetaObject::Connection, 10> cb_autoReplot_connections_;
+  QButtonGroup* const                                          plotTypeButtonGroup_ = (setupUi(this), new QButtonGroup{gb_plotType});
+  int                                                          genMethodIdxPrev     = 0;
 
 private:
-  void replot() {
-    qcp_plot->clearPlottables();
-    const auto graph = std::invoke(_::property<PlotCtor>(plotTypeButtonGroup_->checkedButton()));
-
-    for (auto const [key, value] : data_) {
-      std::invoke(graph, key, value);
-    }
-    setRange(*qcp_plot->xAxis, data_.left.begin()->first, std::prev(data_.left.end())->first);
-    setRange(*qcp_plot->yAxis, 0u, std::prev(data_.right.end())->first);
-
-    qcp_plot->replot();
-  }
-
-
   QObject* genInfo(int idx) {
     return cb_genMethod->itemData(idx).value<QObject*>();
   }
@@ -228,27 +219,28 @@ private:
 private slots:
   void generate() {
     data_.clear();
-    {
-      std::unordered_map<std::size_t, std::size_t> mapTmp;
-      auto                                         gen = std::invoke(_::property<GenCtor>(genInfo()));
-      for ([[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
-        ++mapTmp[gen()];
-      }
-      for (auto const [key, value] : std::move(mapTmp)) {
-        data_.push_back({key, value});
-      }
+    std::unordered_map<std::size_t, std::size_t> mapTmp;
+    for (auto const                  gen = std::invoke(_::property<GenCtor>(genInfo()));
+         [[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
+      ++mapTmp[gen()];
+    }
+    for (auto const [key, value] : std::move(mapTmp)) {
+      data_.push_back({key, value});
     }
     replot();
   }
 
 
-  void sbRangeChanged() {
-    QSignalBlocker const _1{sb_rangeMin}, _2{sb_rangeMax};
-    if (sender() == sp_customXScale_max) {
-      sb_rangeMin->setMaximum(sb_rangeMax->value());
-    } else {
-      sb_rangeMax->setMinimum(sb_rangeMin->value());
+  void replot() {
+    qcp_plot->clearPlottables();
+    for (const auto graph = std::invoke(_::property<PlotCtor>(plotTypeButtonGroup_->checkedButton()));
+         auto const [key, value] : data_) {
+      std::invoke(graph, key, value);
     }
+    setRange(*qcp_plot->xAxis, data_.left.begin()->first, std::prev(data_.left.end())->first);
+    setRange(*qcp_plot->yAxis, 0u, std::prev(data_.right.end())->first);
+
+    qcp_plot->replot();
   }
 
 
@@ -272,13 +264,6 @@ private slots:
   }
 
 
-  void on_cb_genMethod_currentIndexChanged(int idx) {
-    _::setProperty(genInfo(genMethodIdxPrev), genMemFromUi());
-    setUiFromGenMem(_::property<GenMem>(genInfo(idx)));
-    genMethodIdxPrev = idx;
-  }
-
-
   void on_cb_autoRegen_toggled(bool checked) {
     namespace hana = boost::hana;
     hana::for_each(hana::make_tuple(sb_rangeMin, sb_rangeMax, sb_repeatCount, cb_genMethod), [this, checked](auto i) {
@@ -286,7 +271,7 @@ private slots:
         hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
         hana::make_pair(hana::type_c<QComboBox>, qOverload<int>(&QComboBox::currentIndexChanged)));
       hana::unpack(hana::make_tuple(i, sigMap[hana::type_c<std::remove_pointer_t<decltype(i)>>], this, &Plot::generate),
-        [checked](auto&&... args) {
+        [checked](auto... args) {
           if (checked) {
             ::QObject::connect(args...);
           } else {
@@ -294,6 +279,50 @@ private slots:
           }
         });
     });
+  }
+
+
+  void on_cb_genMethod_currentIndexChanged(int idx) {
+    _::setProperty(genInfo(genMethodIdxPrev), genMemFromUi());
+    setUiFromGenMem(_::property<GenMem>(genInfo(idx)));
+    genMethodIdxPrev = idx;
+  }
+
+
+  void on_pb_replot_released() {
+    replot();
+  }
+
+
+  void on_cb_autoReplot_toggled(bool checked) {
+    if (checked) {
+      namespace hana = boost::hana;
+      hana::for_each(
+        hana::make_tuple(sb_customXPointCount,
+          dsb_customXRange_min, dsb_customXRange_max, dsb_customYRange_min, dsb_customYRange_max,
+          dsb_customXScale_min, dsb_customXScale_max, dsb_customYScale_min, dsb_customYScale_max,
+          plotTypeButtonGroup_),
+        [this](auto i) {
+          constexpr auto sigMap = hana::make_map(
+            hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
+            hana::make_pair(hana::type_c<QDoubleSpinBox>, qOverload<double>(&QDoubleSpinBox::valueChanged)),
+            hana::make_pair(hana::type_c<QButtonGroup>, qOverload<QAbstractButton*, bool>(&QButtonGroup::buttonToggled)));
+          hana::unpack(hana::make_tuple(i, sigMap[hana::type_c<std::remove_pointer_t<decltype(i)>>], this, [this](auto... args) {
+            if constexpr (sizeof...(args) > 1) {
+              if (!std::get<1>(std::make_tuple(args...))) {
+                return;
+              }
+            }
+            this->generate();
+          }),
+            [this](auto... args) { cb_autoReplot_connections_.push_back(::QObject::connect(args...)); });
+        });
+    } else {
+      for (auto const connect : cb_autoReplot_connections_) {
+        ::QObject::disconnect(connect);
+      }
+      cb_autoReplot_connections_.clear();
+    }
   }
 };
 }// namespace
