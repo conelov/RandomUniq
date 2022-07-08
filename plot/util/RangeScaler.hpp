@@ -4,16 +4,26 @@
 
 #pragma once
 
+#include <cassert>
+
 
 namespace urand::plot::util {
 
 class RangeScaler final {
 public:
-  RangeScaler(double minOld, double maxOld, double minNew, double maxNew);
+  RangeScaler(double minOld, double maxOld, double minNew, double maxNew)
+      : diffOld{(assert(maxOld >= minOld), maxOld - minOld)}
+      , minOld_{minOld}
+      , diffNew_{(assert(maxNew >= minNew), maxNew - minNew)}
+      , minNew_{minNew} {
+  }
 
-  double operator()(double x) const;
+
+  double operator()(double x) const {
+    return (diffNew_ * (x - minOld_) / diffOld) + minNew_;
+  }
 
 private:
-  const double minOld_, maxOld_, newDif_;
+  double const diffOld, minOld_, diffNew_, minNew_;
 };
 }// namespace urand::plot::util

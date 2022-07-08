@@ -17,9 +17,9 @@ public:
   ButtonGroup(gsl::not_null<QObject*> parent);
 
 signals:
-  void buttonToggledTrue(QAbstractButton*);
+  void buttonToggledTrue(QAbstractButton*) const;
 
 private slots:
-  void onButtonToggled(QAbstractButton* btn, bool checked);
+  void onButtonToggled(QAbstractButton* btn, bool checked) const;
 };
 }// namespace urand::plot::util

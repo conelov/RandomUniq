@@ -17,9 +17,9 @@ ButtonGroup::ButtonGroup(gsl::not_null<QObject*> parent)
 }
 
 
-void ButtonGroup::onButtonToggled(QAbstractButton* btn, bool checked) {
+void ButtonGroup::onButtonToggled(QAbstractButton* btn, bool checked) const {
   if (checked) {
     emit buttonToggledTrue(btn);
   }
 }
-}// namespace plot
+}// namespace urand::plot::util

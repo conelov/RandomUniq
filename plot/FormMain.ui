@@ -365,6 +365,9 @@
                </property>
                <item>
                 <widget class="QCheckBox" name="cb_customXPointCount">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
                    <horstretch>0</horstretch>
@@ -500,7 +503,7 @@
                <item>
                 <widget class="QCheckBox" name="cb_customYRange">
                  <property name="enabled">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
@@ -568,7 +571,7 @@
                <item>
                 <widget class="QCheckBox" name="cb_customXScale">
                  <property name="enabled">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
@@ -638,7 +641,7 @@
                <item>
                 <widget class="QCheckBox" name="cb_customYScale">
                  <property name="enabled">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </property>
                  <property name="sizePolicy">
                   <sizepolicy hsizetype="Maximum" vsizetype="Fixed">

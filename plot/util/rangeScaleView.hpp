@@ -13,11 +13,10 @@
 
 namespace urand::plot::util {
 
-auto rangeScaleView(auto fromMin, auto fromMax, std::size_t count, auto toMin, auto toMax) {
-  return ranges::views::transform(
-           [count, scaler = RangeScaler(fromMin, fromMax, toMin, toMax * count)](auto pair) {
-             return std::make_pair(scaler(pair.first) / static_cast<double>(count), pair.second);
-           })
+auto rangeScaleView(auto fromMin, auto fromMax, auto toMin, auto toMax) {
+  return ranges::views::transform([ scaler = RangeScaler(fromMin, fromMax, toMin, toMax)](auto pair) {
+    return std::make_pair(scaler(pair.first), pair.second);
+  })
     | ranges::views::chunk_by([](auto lhs, auto rhs) {
         return lhs.first == rhs.first;
       })

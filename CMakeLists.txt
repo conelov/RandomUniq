@@ -64,7 +64,7 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     plot/util/generator.hpp
     plot/util/EventFilter.hpp
     #    plot/util/SharedFromInstance.hpp
-    plot/util/RangeScaler.hpp plot/util/src/RangeScaler.cpp
+    plot/util/RangeScaler.hpp
     plot/util/ButtonGroup.hpp plot/util/src/ButtonGroup.cpp
     )
   target_link_libraries(${PROJECT_NAME}_plot_impl PUBLIC
