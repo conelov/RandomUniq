@@ -41,7 +41,7 @@ enum class GenConstraint : std::uint8_t {
 
 
 struct GenMem final {
-  int rangeMin, rangeMax, repeatCount;
+  int rangeMin, rangeMax, repeatCount, repeatCountStep;
 };
 }// namespace
 
@@ -125,38 +125,43 @@ public:
       sa_viewOpt});
 
     namespace hana = boost::hana;
-    hana::for_each(
-      hana::make_tuple(
+    {
+      auto const memInit = GenMem{0, 1'000, 10'000, 100};
+      hana::for_each(
         hana::make_tuple(
-          "linear x3",
-          [](auto... args) { return util::uniformIntDistributionLinearMid<3>(args...); },
-          GenConstraint::Unlimited,
-          GenMem{0, 1'000, 10'000}),
-        hana::make_tuple(
-          "linear",
-          [](auto... args) { return util::uniformIntDistributionLinearMid<1>(args...); },
-          GenConstraint::Unlimited,
-          GenMem{0, 1'000, 10'000}),
-        hana::make_tuple(
-          "UniformIntDistributionUniq LinearDoobleGen",
-          [](auto... args) { return util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(args...); },
-          GenConstraint::Limited,
-          GenMem{0, 100, 50}),
-        hana::make_tuple(
-          "UniformIntDistributionUniq NonLinearEqualChanceRange",
-          [](auto... args) { return util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(args...); },
-          GenConstraint::Limited,
-          GenMem{0, 100, 50})),
-      [this](auto&& i) {
-        hana::unpack(std::forward<decltype(i)>(i), [this](auto&& name, auto&& gen, GenConstraint constraint, GenMem mem) {
-          auto const obj = new QObject{this};
-          _::setProperty(obj,
-            GenCtor{[this, gen] { return std::invoke(gen, sb_rangeMin->value(), sb_rangeMax->value()); }},
-            constraint,
-            mem);
-          cb_genMethod->addItem(std::forward<decltype(name)>(name), QVariant::fromValue(obj));
+          hana::make_tuple(
+            "linear x3",
+            [](auto... args) { return util::uniformIntDistributionLinearMid<3>(args...); },
+            GenConstraint::Unlimited,
+            memInit),
+          hana::make_tuple(
+            "linear",
+            [](auto... args) { return util::uniformIntDistributionLinearMid<1>(args...); },
+            GenConstraint::Unlimited,
+            GenMem{0, 1'000, 10'000, 100}),
+          hana::make_tuple(
+            "UniformIntDistributionUniq LinearDoobleGen",
+            [](auto... args) { return util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::LinearDoobleGen>(args...); },
+            GenConstraint::Limited,
+            GenMem{0, 100, 50, 1}),
+          hana::make_tuple(
+            "UniformIntDistributionUniq NonLinearEqualChanceRange",
+            [](auto... args) { return util::uniformIntDistributionUniqAtType<urand::UniformIntDistributionUniqGenType::NonLinearEqualChanceRange>(args...); },
+            GenConstraint::Limited,
+            GenMem{0, 100, 50, 1})),
+        [this](auto&& i) {
+          hana::unpack(std::forward<decltype(i)>(i), [this](auto&& name, auto&& gen, GenConstraint constraint, GenMem mem) {
+            auto const obj = new QObject{this};
+            _::setProperty(obj,
+              GenCtor{[this, gen] { return std::invoke(gen, sb_rangeMin->value(), sb_rangeMax->value()); }},
+              constraint,
+              mem);
+            cb_genMethod->addItem(std::forward<decltype(name)>(name), QVariant::fromValue(obj));
+          });
         });
-      });
+      ::QObject::connect(cb_genMethod, qOverload<int>(&QComboBox::currentIndexChanged), this, &Plot::genMethodChanged);
+      setUiFromGenMem(memInit);
+    }
 
     hana::for_each(
       hana::make_tuple(
@@ -258,13 +263,15 @@ private:
       QSignalBlocker const _{ui};
       std::mem_fn (&QSpinBox::setValue)(ui, std::invoke(mem, v));
     }
+    sb_repeatCount->setSingleStep(v.repeatCountStep);
   }
 
 
   GenMem genMemFromUi() const {
     return {sb_rangeMin->value(),
       sb_rangeMax->value(),
-      sb_repeatCount->value()};
+      sb_repeatCount->value(),
+      sb_repeatCount->singleStep()};
   }
 
 private slots:
@@ -336,7 +343,7 @@ private slots:
   }
 
 
-  void on_cb_genMethod_currentIndexChanged(int idx) {
+  void genMethodChanged(int idx) {
     _::setProperty(genInfo(genMethodIdxPrev_), genMemFromUi());
     setUiFromGenMem(_::property<GenMem>(genInfo(idx)));
     genMethodIdxPrev_ = idx;
