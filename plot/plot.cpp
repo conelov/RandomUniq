@@ -204,7 +204,6 @@ public:
               hana::make_pair(hana::type_c<QDoubleSpinBox>, qOverload<double>(&QDoubleSpinBox::valueChanged)));
             ::QObject::connect(emitter, sigMap[hana::type_c<std::remove_pointer_t<decltype(emitter)>>], receiver, [receiver, comp](auto val) {
               if (comp(val, receiver->value())) {
-                QSignalBlocker const _1{receiver};
                 receiver->setValue(val);
               }
             });
@@ -213,9 +212,10 @@ public:
           connector(maxsb, minsb, std::less{});
         });
       });
-    //    for (auto const sb : {sb_rangeMin, sb_rangeMax}) {
-    //      initBind(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRepeatCountLimitUpdate);
-    //    }
+
+    for (auto const sb : {sb_rangeMin, sb_rangeMax}) {
+      ::QObject::connect(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRepeatCountLimitUpdate);
+    }
 
     for (auto const [cb, slot] : {std::make_pair(cb_autoRegen, &Plot::generate), std::make_pair(cb_autoReplot, &Plot::replot)}) {
       ::QObject::connect(cb, &QCheckBox::toggled, this, [slot = std::bind_front(slot, this)](bool checked) {
@@ -252,9 +252,8 @@ private:
 
 
   void setUiFromGenMem(GenMem v) {
-    std::array const     sbs{sb_rangeMin, sb_rangeMax, sb_repeatCount};
-    std::array const     mems{&GenMem::rangeMin, &GenMem::rangeMax, &GenMem::repeatCount};
-    QSignalBlocker const _1{sb_rangeMin};
+    std::array const sbs{sb_rangeMin, sb_rangeMax, sb_repeatCount};
+    std::array const mems{&GenMem::rangeMin, &GenMem::rangeMax, &GenMem::repeatCount};
     for (auto const [ui, mem] : ranges::views::zip(sbs, mems)) {
       QSignalBlocker const _{ui};
       std::mem_fn (&QSpinBox::setValue)(ui, std::invoke(mem, v));
@@ -341,6 +340,7 @@ private slots:
     _::setProperty(genInfo(genMethodIdxPrev_), genMemFromUi());
     setUiFromGenMem(_::property<GenMem>(genInfo(idx)));
     genMethodIdxPrev_ = idx;
+    sbRepeatCountLimitUpdate();
   }
 
 
