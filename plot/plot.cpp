@@ -198,19 +198,19 @@ public:
         hana::make_pair(dsb_customYScale_min, dsb_customYScale_max)),
       [](auto tuple) {
         hana::unpack(tuple, [](auto minsb, auto maxsb) {
-          constexpr auto sigMap = hana::make_map(
-            hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
-            hana::make_pair(hana::type_c<QDoubleSpinBox>, qOverload<double>(&QDoubleSpinBox::valueChanged)));
-          {
-            auto slot = [maxsb](auto val) { maxsb->setMinimum(val); };
-            std::invoke(slot, minsb->value());
-            ::QObject::connect(minsb, sigMap[hana::type_c<std::remove_pointer_t<decltype(minsb)>>], maxsb, std::move(slot));
-          }
-          {
-            auto slot = [minsb](auto val) { minsb->setMaximum(val); };
-            std::invoke(slot, maxsb->value());
-            ::QObject::connect(maxsb, sigMap[hana::type_c<std::remove_pointer_t<decltype(maxsb)>>], minsb, std::move(slot));
-          }
+          auto const connector = [](auto* emitter, auto* receiver, auto comp) {
+            constexpr auto sigMap = hana::make_map(
+              hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
+              hana::make_pair(hana::type_c<QDoubleSpinBox>, qOverload<double>(&QDoubleSpinBox::valueChanged)));
+            ::QObject::connect(emitter, sigMap[hana::type_c<std::remove_pointer_t<decltype(emitter)>>], receiver, [receiver, comp](auto val) {
+              if (comp(val, receiver->value())) {
+                QSignalBlocker const _1{receiver};
+                receiver->setValue(val);
+              }
+            });
+          };
+          connector(minsb, maxsb, std::greater{});
+          connector(maxsb, minsb, std::less{});
         });
       });
     //    for (auto const sb : {sb_rangeMin, sb_rangeMax}) {

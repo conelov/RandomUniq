@@ -170,7 +170,7 @@
            <item row="1" column="5">
             <widget class="QSpinBox" name="sb_rangeMax">
              <property name="maximum">
-              <number>1000000</number>
+              <number>999999</number>
              </property>
              <property name="value">
               <number>100</number>
@@ -465,7 +465,14 @@
                  </property>
                  <layout class="QHBoxLayout" name="horizontalLayout">
                   <item>
-                   <widget class="QDoubleSpinBox" name="dsb_customXRange_min"/>
+                   <widget class="QDoubleSpinBox" name="dsb_customXRange_min">
+                    <property name="minimum">
+                     <double>-999999.000000000000000</double>
+                    </property>
+                    <property name="maximum">
+                     <double>999999.000000000000000</double>
+                    </property>
+                   </widget>
                   </item>
                   <item>
                    <widget class="QLabel" name="l_customXScale">
@@ -480,10 +487,10 @@
                   <item>
                    <widget class="QDoubleSpinBox" name="dsb_customXRange_max">
                     <property name="minimum">
-                     <double>-9999.000000000000000</double>
+                     <double>-999999.000000000000000</double>
                     </property>
                     <property name="maximum">
-                     <double>9999.000000000000000</double>
+                     <double>999999.000000000000000</double>
                     </property>
                     <property name="value">
                      <double>1.000000000000000</double>
@@ -534,10 +541,10 @@
                   <item>
                    <widget class="QDoubleSpinBox" name="dsb_customYRange_min">
                     <property name="minimum">
-                     <double>-9999.000000000000000</double>
+                     <double>-999999.000000000000000</double>
                     </property>
                     <property name="maximum">
-                     <double>9999.000000000000000</double>
+                     <double>999999.000000000000000</double>
                     </property>
                    </widget>
                   </item>
@@ -553,6 +560,12 @@
                   </item>
                   <item>
                    <widget class="QDoubleSpinBox" name="dsb_customYRange_max">
+                    <property name="minimum">
+                     <double>-999999.000000000000000</double>
+                    </property>
+                    <property name="maximum">
+                     <double>999999.000000000000000</double>
+                    </property>
                     <property name="value">
                      <double>1.000000000000000</double>
                     </property>
@@ -603,7 +616,14 @@
                  </property>
                  <layout class="QHBoxLayout" name="horizontalLayout_3">
                   <item>
-                   <widget class="QDoubleSpinBox" name="dsb_customXScale_min"/>
+                   <widget class="QDoubleSpinBox" name="dsb_customXScale_min">
+                    <property name="minimum">
+                     <double>-999999.000000000000000</double>
+                    </property>
+                    <property name="maximum">
+                     <double>999999.000000000000000</double>
+                    </property>
+                   </widget>
                   </item>
                   <item>
                    <widget class="QLabel" name="l_customXScale_2">
@@ -618,10 +638,10 @@
                   <item>
                    <widget class="QDoubleSpinBox" name="dsb_customXScale_max">
                     <property name="minimum">
-                     <double>-9999.000000000000000</double>
+                     <double>-999999.000000000000000</double>
                     </property>
                     <property name="maximum">
-                     <double>9999.000000000000000</double>
+                     <double>999999.000000000000000</double>
                     </property>
                     <property name="value">
                      <double>1.000000000000000</double>
@@ -672,10 +692,10 @@
                   <item>
                    <widget class="QDoubleSpinBox" name="dsb_customYScale_min">
                     <property name="minimum">
-                     <double>-9999.000000000000000</double>
+                     <double>-999999.000000000000000</double>
                     </property>
                     <property name="maximum">
-                     <double>9999.000000000000000</double>
+                     <double>999999.000000000000000</double>
                     </property>
                    </widget>
                   </item>
@@ -691,6 +711,12 @@
                   </item>
                   <item>
                    <widget class="QDoubleSpinBox" name="dsb_customYScale_max">
+                    <property name="minimum">
+                     <double>-999999.000000000000000</double>
+                    </property>
+                    <property name="maximum">
+                     <double>999999.000000000000000</double>
+                    </property>
                     <property name="value">
                      <double>1.000000000000000</double>
                     </property>
