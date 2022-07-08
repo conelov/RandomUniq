@@ -66,6 +66,7 @@ if (Qt${QT_VERSION_MAJOR}_FOUND)
     #    plot/util/SharedFromInstance.hpp
     plot/util/RangeScaler.hpp
     plot/util/ButtonGroup.hpp plot/util/src/ButtonGroup.cpp
+    plot/util/member_function_traits.hpp
     )
   target_link_libraries(${PROJECT_NAME}_plot_impl PUBLIC
     range-v3::range-v3

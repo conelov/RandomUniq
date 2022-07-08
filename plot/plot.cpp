@@ -80,17 +80,6 @@ void setProperty(gsl::not_null<QObject*> obj, auto&&... args) {
 }// namespace _
 
 
-QMetaObject::Connection initBind(auto* sender, auto sig, auto* receiver, auto&& slot, auto&&... initv) {
-  auto connect = QObject::connect(sender, sig, receiver, slot);
-  if constexpr (std::is_member_function_pointer_v<std::remove_cvref_t<decltype(slot)>>) {
-    std::invoke(std::forward<decltype(slot)>(slot), receiver, std::forward<decltype(initv)>(initv)...);
-  } else {
-    std::invoke(std::forward<decltype(slot)>(slot), std::forward<decltype(initv)>(initv)...);
-  }
-  return connect;
-}
-
-
 void connectToggled(bool connect, auto emitters, auto sigMap, auto* receiver, auto slot) {
   static_assert(std::is_member_function_pointer_v<std::remove_cvref_t<decltype(slot)>>);
   assert(receiver);
@@ -200,6 +189,34 @@ public:
         });
       });
 
+    hana::for_each(
+      hana::make_tuple(
+        hana::make_pair(sb_rangeMin, sb_rangeMax),
+        hana::make_pair(dsb_customXRange_min, dsb_customXRange_max),
+        hana::make_pair(dsb_customYRange_min, dsb_customYRange_max),
+        hana::make_pair(dsb_customXScale_min, dsb_customXScale_max),
+        hana::make_pair(dsb_customYScale_min, dsb_customYScale_max)),
+      [](auto tuple) {
+        hana::unpack(tuple, [](auto minsb, auto maxsb) {
+          constexpr auto sigMap = hana::make_map(
+            hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
+            hana::make_pair(hana::type_c<QDoubleSpinBox>, qOverload<double>(&QDoubleSpinBox::valueChanged)));
+          {
+            auto slot = [maxsb](auto val) { maxsb->setMinimum(val); };
+            std::invoke(slot, minsb->value());
+            ::QObject::connect(minsb, sigMap[hana::type_c<std::remove_pointer_t<decltype(minsb)>>], maxsb, std::move(slot));
+          }
+          {
+            auto slot = [minsb](auto val) { minsb->setMaximum(val); };
+            std::invoke(slot, maxsb->value());
+            ::QObject::connect(maxsb, sigMap[hana::type_c<std::remove_pointer_t<decltype(maxsb)>>], minsb, std::move(slot));
+          }
+        });
+      });
+    //    for (auto const sb : {sb_rangeMin, sb_rangeMax}) {
+    //      initBind(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRepeatCountLimitUpdate);
+    //    }
+
     for (auto const [cb, slot] : {std::make_pair(cb_autoRegen, &Plot::generate), std::make_pair(cb_autoReplot, &Plot::replot)}) {
       ::QObject::connect(cb, &QCheckBox::toggled, this, [slot = std::bind_front(slot, this)](bool checked) {
         if (checked) {
@@ -208,11 +225,6 @@ public:
       });
     }
 
-    for (auto const sb : {sb_rangeMin, sb_rangeMax}) {
-      initBind(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRepeatCountLimitUpdate);
-    }
-
-    sbRepeatCountLimitUpdate();
     on_cb_autoRegen_toggled(cb_autoRegen->isChecked());
     on_cb_autoReplot_toggled(cb_autoReplot->isChecked());
   }
@@ -240,8 +252,9 @@ private:
 
 
   void setUiFromGenMem(GenMem v) {
-    std::array const sbs{sb_rangeMin, sb_rangeMax, sb_repeatCount};
-    std::array const mems{&GenMem::rangeMin, &GenMem::rangeMax, &GenMem::repeatCount};
+    std::array const     sbs{sb_rangeMin, sb_rangeMax, sb_repeatCount};
+    std::array const     mems{&GenMem::rangeMin, &GenMem::rangeMax, &GenMem::repeatCount};
+    QSignalBlocker const _1{sb_rangeMin};
     for (auto const [ui, mem] : ranges::views::zip(sbs, mems)) {
       QSignalBlocker const _{ui};
       std::mem_fn (&QSpinBox::setValue)(ui, std::invoke(mem, v));
@@ -339,7 +352,8 @@ private slots:
   void on_cb_autoReplot_toggled(bool checked) {
     namespace hana = boost::hana;
     connectToggled(checked,
-      hana::make_tuple(plotTypeButtonGroup_,
+      hana::make_tuple(
+        plotTypeButtonGroup_,
         cb_customXPointCount, sb_customXPointCount,
         cb_customXRange, dsb_customXRange_min, dsb_customXRange_max,
         cb_customYRange, dsb_customYRange_min, dsb_customYRange_max,
