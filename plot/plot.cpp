@@ -15,6 +15,7 @@
 #include <boost/hana/for_each.hpp>
 #include <boost/hana/map.hpp>
 #include <boost/hana/pair.hpp>
+#include <boost/hana/size.hpp>
 #include <boost/hana/tuple.hpp>
 #include <boost/hana/type.hpp>
 #include <boost/hana/unpack.hpp>
@@ -77,18 +78,24 @@ void setProperty(gsl::not_null<QObject*> obj, auto&&... args) {
   static_assert(sizeof...(args));
   (obj->setProperty(typeStr<std::remove_cvref_t<decltype(args)>>(), QVariant::fromValue(std::forward<decltype(args)>(args))), ...);
 }
+
+
+template<typename T>
+inline constexpr std::size_t tuple_size = decltype(boost::hana::size(std::declval<T>()))::value;
 }// namespace _
 
 
-void connectToggled(bool connect, auto emitters, auto sigMap, auto* receiver, auto slot) {
+void connectToggled(bool connect, auto&& emitters, auto&& sigMap, auto* receiver, auto&& slot) {
+  static_assert(_::tuple_size<decltype(emitters)>);
+  static_assert(_::tuple_size<decltype(sigMap)>);
   static_assert(std::is_member_function_pointer_v<std::remove_cvref_t<decltype(slot)>>);
   assert(receiver);
   namespace hana = boost::hana;
-  hana::for_each(emitters, [=](auto* emitter) {
+  hana::for_each(std::forward<decltype(emitters)>(emitters), [connect, &sigMap, receiver, &slot](auto* emitter) {
     assert(emitter);
     hana::unpack(
       hana::make_tuple(emitter, sigMap[hana::type_c<std::remove_pointer_t<decltype(emitter)>>], receiver, slot),
-      [=](auto... args) {
+      [connect](auto... args) {
         if (connect) {
           ::QObject::connect(args...);
         } else {
@@ -222,7 +229,7 @@ public:
       ::QObject::connect(sb, qOverload<int>(&QSpinBox::valueChanged), this, &Plot::sbRepeatCountLimitUpdate);
     }
 
-    for (auto const [cb, slot] : {std::make_pair(cb_autoRegen, &Plot::generate), std::make_pair(cb_autoReplot, &Plot::replot)}) {
+    for (auto const [cb, slot] : {std::make_pair(cb_autoRegen, &Plot::generate), std::make_pair(cb_autoReplot, &Plot::dataViewUpdate)}) {
       ::QObject::connect(cb, &QCheckBox::toggled, this, [slot = std::bind_front(slot, this)](bool checked) {
         if (checked) {
           std::invoke(slot);
@@ -230,18 +237,25 @@ public:
       });
     }
 
-    on_cb_autoRegen_toggled(cb_autoRegen->isChecked());
-    on_cb_autoReplot_toggled(cb_autoReplot->isChecked());
+    if (cb_autoRegen->isChecked()) {
+      on_cb_autoRegen_toggled(true);
+    }
+    if (cb_autoReplot->isChecked()) {
+      on_cb_autoReplot_toggled(true);
+    }
   }
 
 private:
-  using Data = boost::bimap<
-    boost::bimaps::set_of<std::size_t>,
-    boost::bimaps::multiset_of<std::size_t>,
+  using DataSource_ = std::unordered_map<std::size_t, std::size_t>;
+
+  using DataView_ = boost::bimap<
+    boost::bimaps::set_of<double>,
+    boost::bimaps::multiset_of<double>,
     boost::bimaps::vector_of_relation>;
 
 private:
-  Data                     data_;
+  DataView_                dataView_;
+  DataSource_              dataSource_;
   util::ButtonGroup* const plotTypeButtonGroup_ = (setupUi(this), new util::ButtonGroup{gb_plotType});
   int                      genMethodIdxPrev_    = 0;
 
@@ -276,39 +290,72 @@ private:
 
 private slots:
   void generate() {
-    data_.clear();
-    std::unordered_map<std::size_t, std::size_t> mapTmp;
+    dataSource_.clear();
     for (auto const                  gen = std::invoke(_::property<GenCtor>(genInfo()));
          [[maybe_unused]] auto const i : ranges::views::iota(0, sb_repeatCount->value())) {
-      ++mapTmp[gen()];
+      ++dataSource_[gen()];
     }
-    for (auto const [key, value] : std::move(mapTmp)) {
-      data_.push_back({key, value});
+
+    dataViewUpdate();
+  }
+
+
+  void dataViewUpdate() {
+    if (dataSource_.empty()) {
+      // TODO: log empty dataSource_
+      return;
     }
+
+    dataView_.clear();
+    if (cb_customXRange->isChecked()) {
+      auto const [min, max] = std::minmax_element(dataSource_.cbegin(), dataSource_.cend(), [](auto lhs, auto rhs) {
+        return lhs.first < rhs.first;
+      });
+      for (auto const [key, value] : dataSource_
+          | util::rangeScaleView(min->first, max->first, dsb_customXRange_min->value(), dsb_customXRange_max->value())) {
+        dataView_.push_back({key, static_cast<double>(value)});
+      }
+    } else {
+      for (auto const [key, value] : dataSource_) {
+        dataView_.push_back({static_cast<double>(key), static_cast<double>(value)});
+      }
+    }
+
     replot();
   }
 
 
   void replot() {
-    if (data_.empty()) {
+    if (dataView_.empty()) {
+      // TODO: log empty dataView_
       return;
     }
 
     qcp_plot->clearPlottables();
-    auto const [minX, maxX] = cb_customXRange->isChecked()
-      ? std::make_pair(dsb_customXRange_min->value(), dsb_customXRange_max->value())
-      : std::make_pair<double, double>(data_.left.begin()->first, std::prev(data_.left.end())->first);
-
     for (const auto graph = std::invoke(_::property<PlotCtor>(plotTypeButtonGroup_->checkedButton()));
-         auto const [key, value] : std::as_const(data_)
-           | ranges::views::transform([](auto pair) { return std::make_pair(pair.left, pair.right); })
-           | util::rangeScaleView(data_.left.begin()->first, std::prev(data_.left.end())->first, minX, maxX)) {
+         auto const [key, value] : dataView_.left) {
       std::invoke(graph, key, value);
     }
-    setRange(*qcp_plot->xAxis, data_.left.begin()->first, std::prev(data_.left.end())->first);
-    setRange(*qcp_plot->yAxis, 0u, std::prev(data_.right.end())->first);
-
     qcp_plot->replot();
+
+    rangeUpdate();
+  }
+
+
+  void rangeUpdate() {
+    double const multi = .025;
+    {
+      double const min  = dataView_.left.begin()->first,
+                   max  = dataView_.left.rbegin()->first,
+                   diff = (assert(max >= min), max - min);
+      qcp_plot->xAxis->setRange(min - diff * multi, max + diff * multi);
+    }
+    {
+      double const min  = dataView_.right.begin()->first,
+                   max  = dataView_.right.rbegin()->first,
+                   diff = (assert(max >= min), max - min);
+      qcp_plot->yAxis->setRange(0, max + diff * multi);
+    }
   }
 
 
@@ -352,7 +399,7 @@ private slots:
 
 
   void on_pb_replot_released() {
-    replot();
+    dataViewUpdate();
   }
 
 
@@ -371,7 +418,7 @@ private slots:
         hana::make_pair(hana::type_c<QSpinBox>, qOverload<int>(&QSpinBox::valueChanged)),
         hana::make_pair(hana::type_c<QDoubleSpinBox>, qOverload<double>(&QDoubleSpinBox::valueChanged)),
         hana::make_pair(hana::type_c<util::ButtonGroup>, &util::ButtonGroup::buttonToggledTrue)),
-      this, &Plot::replot);
+      this, &Plot::dataViewUpdate);
   }
 };
 }// namespace
@@ -389,5 +436,6 @@ int main(int argc, char* argv[]) {
 
   return QApplication::exec();
 }
+
 
 #include "plot.moc"

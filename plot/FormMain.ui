@@ -202,9 +202,6 @@
              <property name="text">
               <string>Gen</string>
              </property>
-             <property name="checkable">
-              <bool>false</bool>
-             </property>
              <property name="checked">
               <bool>false</bool>
              </property>
