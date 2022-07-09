@@ -115,6 +115,19 @@ void setRange(QCPAxis& axis, auto min, auto max) {
 class Plot final : public QMainWindow
     , private Ui::FormMain {
   Q_OBJECT
+private:
+  template<auto slot>
+  void connectToSlot(auto&& emitterSigPairs) {
+    static_assert(_::tuple_size<decltype(emitterSigPairs)>);
+    static_assert(std::is_member_function_pointer_v<decltype(slot)>);
+    namespace hana = boost::hana;
+    hana::for_each(std::forward<decltype(emitterSigPairs)>(emitterSigPairs), [this](auto pair) {
+      hana::unpack(pair, [this](auto emitters, auto sig) {
+        ::QObject::connect(emitters, sig, this, slot);
+      });
+    });
+  }
+
 public:
   Plot() {
     setWindowTitle(QString{BOOST_PP_STRINGIZE(PROJECT_NAME)} + "_v" + BOOST_PP_STRINGIZE(PROJECT_VERSION));
